@@ -22,6 +22,14 @@ export function App(_props: AppProps) {
   const approvedTests = state.proposals.filter(
     (proposal) => proposal.kind === "test_case" && proposal.status === "approved",
   ).length;
+  const pendingProposalCount = state.proposals.filter(
+    (proposal) => proposal.status === "pending",
+  ).length;
+  const focusedRiskEvidence = state.networkEvidence.find(
+    (item) =>
+      state.focusedEvidenceIds.includes(item.evidenceId) &&
+      item.riskType === "duplicate_side_effect",
+  );
 
   const handleTestReview = (
     proposal: TestCaseProposal,
@@ -122,9 +130,9 @@ export function App(_props: AppProps) {
           </article>
           <article className="metric metric-signal">
             <p className="metric-label">NETWORK SIGNAL</p>
-            <p className="metric-value">2 accepted</p>
-            <p className="metric-copy">operations · 1 payment intent</p>
-            <p className="metric-note">Observed in sanitized synthetic evidence</p>
+            <p className="metric-value">{state.networkEvidence.length} clusters</p>
+            <p className="metric-copy">Bounded retry evidence</p>
+            <p className="metric-note">Available for agent query and human inspection</p>
           </article>
         </div>
         <div className="review-callout">
@@ -143,7 +151,7 @@ export function App(_props: AppProps) {
               <p className="panel-kicker">02 · SANITIZED SOURCE</p>
               <h2 id="evidence-title">Evidence explorer</h2>
             </div>
-            <p className="panel-stat">26 events → 2 bounded clusters</p>
+            <p className="panel-stat">2 bounded synthetic clusters</p>
           </div>
           {state.focusedEvidenceIds.length > 0 && (
             <div className="agent-focus" aria-live="polite">
@@ -184,16 +192,15 @@ export function App(_props: AppProps) {
               </tbody>
             </table>
           </div>
-          <div className="agent-finding">
-            <p className="metric-label">AGENT-READY FINDING</p>
-            <p>
-              One payment intent produced two accepted operation refs using different
-              idempotency key refs.
-            </p>
-            <strong>
-              This establishes a release risk—not a confirmed duplicate charge.
-            </strong>
-          </div>
+          {focusedRiskEvidence && (
+            <div className="agent-finding" aria-live="polite">
+              <p className="metric-label">FOCUSED EVIDENCE INTERPRETATION</p>
+              <p>{focusedRiskEvidence.summary}</p>
+              <strong>
+                Bounded observation—not proof of a duplicate charge.
+              </strong>
+            </div>
+          )}
         </section>
 
         <section className="panel inbox-panel" aria-labelledby="inbox-title">
@@ -231,6 +238,11 @@ export function App(_props: AppProps) {
               )
             )}
           </div>
+          <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {pendingProposalCount === 1
+              ? "1 proposal pending human review."
+              : `${pendingProposalCount} proposals pending human review.`}
+          </p>
           <p className="notice" aria-live="polite">{notice}</p>
         </section>
       </div>

@@ -1,4 +1,4 @@
-# Release Evidence Room MVP implementation plan
+# Release Evidence Room delivery plan
 
 ## Outcome
 
@@ -42,9 +42,12 @@ Ship a public, no-login, one-page WebMCP demo where a release owner and an agent
 - The page works without WebMCP and registers exactly four tools when WebMCP is available.
 - Unit tests, Playwright, TypeScript, and production build pass with clean output.
 
-## Deferred until explicit approval
+## Challenge delivery gates
 
-- Public GitHub repository, repository name, and license.
-- Hosting provider and public deployment.
-- Devpost submission or any externally submitted form.
-- Real Charles/TestLink data or integrations.
+- Public source: publish `Eason0in/release-evidence-room` with the MIT license visible, complete instructions, and timestamped signed history.
+- Production: deploy the static app to Vercel and verify its URL, UI, security headers, and WebMCP discovery.
+- Native runtime: use ChatGPT's in-app browser or Chrome 149+ with the WebMCP flag enabled to discover and execute all four tools.
+- Demo: record a public English-audio YouTube video under three minutes showing native WebMCP, the proposal boundary, human confirmation, and audit trail.
+- Submission: keep the Devpost entry as a draft until the live URL, public repository, public video, and English text are all rechecked.
+
+Real Charles/TestLink data and integrations remain outside this entry. The synthetic fixture is enough to demonstrate the WebMCP interaction while keeping company traffic, credentials, and customer data out of the public project.

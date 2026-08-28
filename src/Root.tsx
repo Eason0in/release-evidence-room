@@ -32,8 +32,13 @@ export function ReleaseRoomRoot({ store, registry }: ReleaseRoomRootProps) {
 
     let active = true;
     let dispose: (() => void) | null = null;
+    const registrationController = new AbortController();
     setStatus("registering");
-    void registerReleaseEvidenceTools(handlers, resolvedRegistry)
+    void registerReleaseEvidenceTools(
+      handlers,
+      resolvedRegistry,
+      registrationController,
+    )
       .then((registeredDispose) => {
         if (!active) {
           registeredDispose?.();
@@ -48,6 +53,7 @@ export function ReleaseRoomRoot({ store, registry }: ReleaseRoomRootProps) {
 
     return () => {
       active = false;
+      registrationController.abort();
       dispose?.();
     };
   }, [handlers, registry]);
