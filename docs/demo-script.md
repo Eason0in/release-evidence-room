@@ -60,3 +60,14 @@ Click **Confirm HOLD**.
 Show the activity trail and its v12→v16 sequence.
 
 > Every read, proposal, and human action is attributed and versioned. There are no credentials, uploads, live company systems, or deploy tool.
+
+## Optional Inworld narration
+
+The checked-in narration text can be synthesized locally with Inworld's On-Demand plan. The API key is read only from the shell environment and is never written to the repository:
+
+```bash
+export INWORLD_API_KEY='your-key-from-the-inworld-portal'
+npm run demo:tts:inworld
+```
+
+The default output is `demo-output/demo-narration-inworld.wav`. Use `INWORLD_VOICE_ID`, `INWORLD_MODEL_ID`, `INWORLD_TEXT_FILE`, or `INWORLD_OUTPUT` to override the defaults. Convert the WAV to the final video soundtrack with the local recording workflow; do not upload the API key or synthetic/private evidence.
