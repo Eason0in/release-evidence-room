@@ -5,6 +5,7 @@ import {
   proposeTestCase,
   recordAgentRead,
   reviewTestProposal,
+  runApprovedVerification,
 } from "./domain/workflow";
 import { App } from "./App";
 
@@ -36,7 +37,7 @@ describe("Release Evidence Room", () => {
       screen.getByText(/green suite does not demonstrate duplicate-safe retry behavior/i),
     ).toBeInTheDocument();
     expect(screen.getByText("UNDECIDED")).toBeInTheDocument();
-    expect(screen.getByText("WebMCP · 4 tools available")).toBeInTheDocument();
+    expect(screen.getByText("WebMCP · 5 tools available")).toBeInTheDocument();
     expect(screen.getByText("No deploy action is exposed.")).toBeInTheDocument();
     expect(
       screen.queryByText(/one payment intent produced two accepted operation refs/i),
@@ -90,11 +91,54 @@ describe("Release Evidence Room", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve test" }));
 
     expect(screen.getByText("APPROVED BY HUMAN")).toBeInTheDocument();
-    expect(screen.getByText("1 approved test · Not run")).toBeInTheDocument();
+    expect(screen.getByText("1 approved test · Awaiting verification")).toBeInTheDocument();
     expect(store.getState()).toMatchObject({
       stateVersion: 14,
       proposals: [{ proposalId: "P-017", status: "approved" }],
     });
+  });
+
+  it("shows targeted and seeded verification results linked to the approved test", () => {
+    const store = createReleaseRoomStore(localStorage);
+    const proposedTest = proposeTestCase(store.getState(), testInput);
+    expect(proposedTest.ok).toBe(true);
+    if (!proposedTest.ok) return;
+    const approved = reviewTestProposal(proposedTest.state, "P-017", "approve");
+    expect(approved.ok).toBe(true);
+    if (!approved.ok) return;
+    const targeted = runApprovedVerification(approved.state, {
+      expectedStateVersion: 14,
+      clientRequestId: "req-ui-targeted",
+      testProposalId: "P-017",
+      strategy: "targeted_retry",
+    });
+    expect(targeted.ok).toBe(true);
+    if (!targeted.ok) return;
+    const monkey = runApprovedVerification(targeted.state, {
+      expectedStateVersion: 15,
+      clientRequestId: "req-ui-monkey",
+      testProposalId: "P-017",
+      strategy: "seeded_monkey",
+      seed: 37,
+      maxSteps: 20,
+    });
+    expect(monkey.ok).toBe(true);
+    if (!monkey.ok) return;
+    store.setState(monkey.state);
+
+    render(<App store={store} webMcpStatus="available" />);
+
+    expect(screen.getAllByText("RISK CONFIRMED")).toHaveLength(2);
+    expect(screen.getByText("VERIFICATION · V-001")).toBeInTheDocument();
+    expect(screen.getByText("TARGETED RETRY")).toBeInTheDocument();
+    expect(screen.getByText("VERIFICATION · V-002")).toBeInTheDocument();
+    expect(screen.getByText("SEEDED MONKEY")).toBeInTheDocument();
+    expect(screen.getByText(/seed 37 · 4 of 20 steps/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/2 side effects observed/i, {
+        selector: ".verification-meta",
+      }),
+    ).toHaveLength(2);
   });
 
   it("keeps HOLD non-binding until the human confirms it", () => {
@@ -105,14 +149,23 @@ describe("Release Evidence Room", () => {
     const approved = reviewTestProposal(proposedTest.state, "P-017", "approve");
     expect(approved.ok).toBe(true);
     if (!approved.ok) return;
-    const proposedDecision = proposeReleaseDecision(approved.state, {
+    const verification = runApprovedVerification(approved.state, {
       expectedStateVersion: 14,
+      clientRequestId: "req-ui-verification",
+      testProposalId: "P-017",
+      strategy: "targeted_retry",
+    });
+    expect(verification.ok).toBe(true);
+    if (!verification.ok) return;
+    const proposedDecision = proposeReleaseDecision(verification.state, {
+      expectedStateVersion: 15,
       clientRequestId: "req-ui-decision",
       recommendation: "hold",
       rationale:
-        "Exactly-once behavior is unproven until the approved retry test passes.",
+        "Targeted verification reproduced unstable key and duplicate operation refs.",
       evidenceIds: ["netev_retry_017", "netev_response_016"],
       testProposalId: "P-017",
+      verificationResultId: "V-001",
     });
     expect(proposedDecision.ok).toBe(true);
     if (!proposedDecision.ok) return;
@@ -122,15 +175,20 @@ describe("Release Evidence Room", () => {
 
     expect(screen.getByText("UNDECIDED")).toBeInTheDocument();
     expect(screen.getByText("HOLD", { selector: ".proposal-recommendation" })).toBeInTheDocument();
+    expect(screen.getByText("Test P-017 · Verification V-001")).toBeInTheDocument();
+    expect(screen.queryByText(/unblock when P-017 passes/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Confirm HOLD" }));
 
     expect(screen.getByText("Human confirmed")).toBeInTheDocument();
     expect(store.getState()).toMatchObject({
-      stateVersion: 16,
+      stateVersion: 17,
       humanDecision: "hold",
       proposals: [
         { proposalId: "P-017", status: "approved" },
         { proposalId: "P-018", status: "confirmed" },
+      ],
+      verifications: [
+        { verificationResultId: "V-001", verdict: "risk_confirmed" },
       ],
     });
   });

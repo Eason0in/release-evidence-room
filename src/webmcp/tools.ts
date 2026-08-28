@@ -1,5 +1,6 @@
 import type { NetworkEvidenceQuery } from "../domain/evidence";
 import type {
+  ApprovedVerificationInput,
   ReleaseDecisionProposalInput,
   TestCaseProposalInput,
 } from "../domain/workflow";
@@ -14,6 +15,10 @@ export interface ReleaseEvidenceHandlers {
   ): WebMCP.MaybePromise<unknown>;
   proposeTestCase(
     input: TestCaseProposalInput,
+    signal: AbortSignal,
+  ): WebMCP.MaybePromise<unknown>;
+  runApprovedVerification(
+    input: ApprovedVerificationInput,
     signal: AbortSignal,
   ): WebMCP.MaybePromise<unknown>;
   proposeReleaseDecision(
@@ -133,6 +138,66 @@ export const releaseToolSchemas = {
     ],
     additionalProperties: false,
   },
+  verification: {
+    type: "object",
+    properties: {
+      expectedStateVersion: {
+        type: "integer",
+        minimum: 0,
+        description: "Copy stateVersion from the latest get_release_snapshot result.",
+      },
+      clientRequestId: {
+        type: "string",
+        minLength: 1,
+        maxLength: 80,
+        pattern: "^[A-Za-z0-9._:-]+$",
+        description: "Use a unique ID per logical run; reuse it only to retry identical input.",
+      },
+      testProposalId: {
+        type: "string",
+        minLength: 1,
+        maxLength: 80,
+        pattern: ".*\\S.*",
+        description: "An approved test proposal to execute in the bounded synthetic sandbox.",
+      },
+      strategy: {
+        type: "string",
+        enum: ["targeted_retry", "seeded_monkey"],
+        description: "Run the exact retry replay or a reproducible bounded state-machine exploration.",
+      },
+      seed: {
+        type: "integer",
+        minimum: 0,
+        maximum: 2147483647,
+        description: "Required only for seeded_monkey so the same trace can be reproduced.",
+      },
+      maxSteps: {
+        type: "integer",
+        minimum: 1,
+        maximum: 100,
+        description: "Required only for seeded_monkey; hard bounds the explored transitions.",
+      },
+    },
+    required: [
+      "expectedStateVersion",
+      "clientRequestId",
+      "testProposalId",
+      "strategy",
+    ],
+    oneOf: [
+      {
+        properties: { strategy: { const: "targeted_retry" } },
+        not: {
+          anyOf: [{ required: ["seed"] }, { required: ["maxSteps"] }],
+        },
+      },
+      {
+        properties: { strategy: { const: "seeded_monkey" } },
+        required: ["seed", "maxSteps"],
+      },
+    ],
+    additionalProperties: false,
+  },
   releaseDecision: {
     type: "object",
     properties: {
@@ -178,7 +243,14 @@ export const releaseToolSchemas = {
         minLength: 1,
         maxLength: 80,
         pattern: ".*\\S.*",
-        description: "Optional ID of an approved test proposal that this decision depends on.",
+        description: "ID of the approved test proposal that this decision depends on.",
+      },
+      verificationResultId: {
+        type: "string",
+        minLength: 1,
+        maxLength: 80,
+        pattern: ".*\\S.*",
+        description: "Verification result ID returned by run_approved_verification for the approved test.",
       },
     },
     required: [
@@ -187,6 +259,8 @@ export const releaseToolSchemas = {
       "recommendation",
       "rationale",
       "evidenceIds",
+      "testProposalId",
+      "verificationResultId",
     ],
     additionalProperties: false,
   },
@@ -337,8 +411,10 @@ function parseReleaseDecision(
     "recommendation",
     "rationale",
     "evidenceIds",
+    "testProposalId",
+    "verificationResultId",
   ];
-  assertKeys(record, [...required, "testProposalId"], required);
+  assertKeys(record, required, required);
   if (record.recommendation !== "ready" && record.recommendation !== "hold") {
     throw new ToolInputError("recommendation must be ready or hold.");
   }
@@ -353,9 +429,53 @@ function parseReleaseDecision(
     recommendation: record.recommendation,
     rationale: readString(record, "rationale", 1000),
     evidenceIds: readEvidenceIds(record),
-    ...(record.testProposalId === undefined
-      ? {}
-      : { testProposalId: readString(record, "testProposalId", 80) }),
+    testProposalId: readString(record, "testProposalId", 80),
+    verificationResultId: readString(record, "verificationResultId", 80),
+  };
+}
+
+function parseApprovedVerification(
+  input: Record<string, unknown>,
+): ApprovedVerificationInput {
+  const record = asRecord(input);
+  const base = [
+    "expectedStateVersion",
+    "clientRequestId",
+    "testProposalId",
+    "strategy",
+  ];
+  assertKeys(record, [...base, "seed", "maxSteps"], base);
+  const common = {
+    expectedStateVersion: readInteger(
+      record,
+      "expectedStateVersion",
+      0,
+      Number.MAX_SAFE_INTEGER,
+    ),
+    clientRequestId: readClientRequestId(record),
+    testProposalId: readString(record, "testProposalId", 80),
+  };
+  if (record.strategy === "targeted_retry") {
+    if (record.seed !== undefined || record.maxSteps !== undefined) {
+      throw new ToolInputError(
+        "seed and maxSteps are only supported for seeded_monkey.",
+      );
+    }
+    return { ...common, strategy: record.strategy };
+  }
+  if (record.strategy !== "seeded_monkey") {
+    throw new ToolInputError("strategy is not supported.");
+  }
+  if (record.seed === undefined || record.maxSteps === undefined) {
+    throw new ToolInputError(
+      "seeded_monkey requires both seed and maxSteps.",
+    );
+  }
+  return {
+    ...common,
+    strategy: record.strategy,
+    seed: readInteger(record, "seed", 0, 2_147_483_647),
+    maxSteps: readInteger(record, "maxSteps", 1, 100),
   };
 }
 
@@ -414,10 +534,26 @@ export function createReleaseEvidenceTools(
       },
     },
     {
+      name: "run_approved_verification",
+      title: "Run approved verification",
+      description:
+        "Execute an approved test proposal only inside this page's bounded synthetic sandbox. Supports an exact retry replay or a seeded state-machine monkey run with at most 100 steps. Returns risk_confirmed, not_reproduced, or inconclusive; never calls a live service or runs arbitrary code.",
+      inputSchema: releaseToolSchemas.verification,
+      annotations: { readOnlyHint: false, untrustedContentHint: false },
+      async execute(input, options) {
+        const signal = getExecutionSignal(options);
+        assertActive(signal);
+        return handlers.runApprovedVerification(
+          parseApprovedVerification(input),
+          signal,
+        );
+      },
+    },
+    {
       name: "propose_release_decision",
       title: "Propose a release decision",
       description:
-        "Create a non-binding READY or HOLD proposal grounded in room evidence. If testProposalId is supplied, it must identify an approved test proposal from the latest snapshot. Cannot confirm, deploy, or release.",
+        "Create a non-binding READY or HOLD proposal grounded in room evidence. Requires an approved test proposal and its matching verification result; READY additionally requires a not_reproduced verdict. Cannot confirm, deploy, or release.",
       inputSchema: releaseToolSchemas.releaseDecision,
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       async execute(input, options) {

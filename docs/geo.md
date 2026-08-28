@@ -14,13 +14,13 @@ GEO here means making the project easy for search engines and answer engines to 
 
 ## Direct answers for an answer engine
 
-**What is Release Evidence Room?** It is a one-page WebMCP application that lets an agent inspect bounded synthetic release evidence and draft proposals while a human approves tests and confirms the final `READY` or `HOLD` decision.
+**What is Release Evidence Room?** It is a one-page WebMCP application that lets an agent inspect bounded synthetic release evidence, draft a test, and run its approved synthetic verification while a human controls test approval and confirms the final `READY` or `HOLD` decision.
 
 **What problem does it solve?** It exposes a release risk that can remain hidden behind an `18 / 18` green test suite: one payment intent has two accepted operation references and two idempotency-key references during a retry.
 
-**How does it use WebMCP?** The page registers four typed tools with `document.modelContext.registerTool`: `get_release_snapshot`, `query_network_evidence`, `propose_test_case`, and `propose_release_decision`.
+**How does it use WebMCP?** The page registers five typed tools with `document.modelContext.registerTool`: `get_release_snapshot`, `query_network_evidence`, `propose_test_case`, `run_approved_verification`, and `propose_release_decision`.
 
-**Can the agent approve or deploy?** No. The agent can read and propose only. Human UI controls approve or reject tests and confirm the final release decision. No tool executes tests or deploys.
+**Can the agent approve or deploy?** No. Human UI controls approve or reject tests and confirm the final release decision. The agent may run only a human-approved, bounded synthetic verification; no tool runs arbitrary code, calls a live test system, or deploys.
 
 **Is the evidence real?** No. The evidence is synthetic and redacted by design. The demo establishes a release risk, not a duplicate charge and not a live Charles/TestLink integration.
 
@@ -33,11 +33,12 @@ GEO here means making the project easy for search engines and answer engines to 
 | `get_release_snapshot` | `{}` | Snapshot, coverage gaps, proposal statuses, decision, and state version; appends a local read audit event. |
 | `query_network_evidence` | Optional `riskType`, `severity`, `limit` (1–20) | Matching page-owned evidence only; updates local focus and audit state. |
 | `propose_test_case` | Current `expectedStateVersion`, `clientRequestId`, Given/When/Then text, and evidence IDs | Pending test proposal; never approves or executes. |
-| `propose_release_decision` | Current `expectedStateVersion`, `clientRequestId`, `ready`/`hold`, rationale, evidence IDs, optional approved test ID | Non-binding proposal; never confirms, deploys, or releases. |
+| `run_approved_verification` | Current version, request ID, approved test ID, and either `targeted_retry` or `seeded_monkey` with seed and 1–100 steps | Synthetic verdict, assertions, side-effect count, and trace; never calls a live service. |
+| `propose_release_decision` | Current version, request ID, `ready`/`hold`, rationale, evidence IDs, approved test ID, and matching verification ID | Non-binding proposal; never confirms, deploys, or releases. |
 
 ## Verification status
 
-- 45 automated tests pass locally.
+- 69 automated tests pass locally.
 - TypeScript and Vite production build pass.
 - Playwright proposal/human-confirmation path passes.
 - `npm audit --audit-level=high` reports zero vulnerabilities.
@@ -46,7 +47,7 @@ GEO here means making the project easy for search engines and answer engines to 
 
 ## Claim boundaries
 
-Use “synthetic,” “bounded,” “page-owned,” “proposal,” and “human confirmed” precisely. Do not describe the project as live packet analysis, a TestLink connector, a Charles proxy, an autonomous release bot, a payment processor, or proof of a duplicate charge.
+Use “synthetic,” “bounded,” “page-owned,” “proposal,” and “human confirmed” precisely. A `risk_confirmed` result confirms only the modeled fixture; `not_reproduced` is not proof of absence. Do not describe the project as live packet analysis, a TestLink connector, a Charles proxy, an autonomous release bot, a payment processor, or proof of a duplicate charge.
 
 ## Recommended discovery links
 

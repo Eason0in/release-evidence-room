@@ -3,6 +3,7 @@ import type {
   ActivityEntry,
   ReleaseDecisionProposal,
   TestCaseProposal,
+  VerificationResult,
 } from "./domain/evidence";
 import type { ReleaseRoomStore } from "./domain/store";
 import { reviewReleaseDecision, reviewTestProposal } from "./domain/workflow";
@@ -25,6 +26,7 @@ export function App(_props: AppProps) {
   const pendingProposalCount = state.proposals.filter(
     (proposal) => proposal.status === "pending",
   ).length;
+  const latestVerification = state.verifications.at(-1);
   const focusedRiskEvidence = state.networkEvidence.find(
     (item) =>
       state.focusedEvidenceIds.includes(item.evidenceId) &&
@@ -43,7 +45,7 @@ export function App(_props: AppProps) {
     store.setState(result.state);
     setNotice(
       action === "approve"
-        ? `${proposal.proposalId} approved by human; the test has not run.`
+        ? `${proposal.proposalId} approved by human; verification may now run in the bounded sandbox.`
         : `${proposal.proposalId} rejected by human.`,
     );
   };
@@ -120,13 +122,25 @@ export function App(_props: AppProps) {
           </article>
           <article className="metric metric-gap">
             <p className="metric-label">EXACTLY-ONCE BRANCH</p>
-            <p className="metric-value">{approvedTests === 0 ? "0 tests" : approvedTests}</p>
+            <p className="metric-value">
+              {state.verifications.length === 0
+                ? approvedTests === 0
+                  ? "0 tests"
+                  : approvedTests
+                : `${state.verifications.length} runs`}
+            </p>
             <p className="metric-copy">
               {approvedTests === 0
                 ? "Missing response-loss coverage"
-                : `${approvedTests} approved test · Not run`}
+                : latestVerification
+                  ? `Latest · ${verificationVerdictLabel(latestVerification)}`
+                  : `${approvedTests} approved test · Awaiting verification`}
             </p>
-            <p className="metric-note">Stable retry key remains unproven</p>
+            <p className="metric-note">
+              {latestVerification
+                ? `${verificationStrategyLabel(latestVerification)} · ${latestVerification.observedSideEffects} side effects observed`
+                : "Stable retry key remains unproven"}
+            </p>
           </article>
           <article className="metric metric-signal">
             <p className="metric-label">NETWORK SIGNAL</p>
@@ -226,6 +240,10 @@ export function App(_props: AppProps) {
                   <TestProposalCard
                     key={proposal.proposalId}
                     proposal={proposal}
+                    verifications={state.verifications.filter(
+                      (verification) =>
+                        verification.testProposalId === proposal.proposalId,
+                    )}
                     onReview={handleTestReview}
                   />
                 ) : (
@@ -267,7 +285,7 @@ export function App(_props: AppProps) {
         <footer className="safety-footer">
           <span className="safety-dot" aria-hidden="true" />
           <strong>No deploy action is exposed.</strong>
-          <span>Agents read and propose. Humans approve and decide.</span>
+          <span>Agents read, propose, and run approved sandbox checks. Humans approve and decide.</span>
         </footer>
       </section>
     </main>
@@ -277,7 +295,7 @@ export function App(_props: AppProps) {
 function webMcpLabel(status: WebMcpStatus): string {
   switch (status) {
     case "available":
-      return "WebMCP · 4 tools available";
+      return "WebMCP · 5 tools available";
     case "registering":
       return "WebMCP · registering tools";
     case "error":
@@ -289,9 +307,11 @@ function webMcpLabel(status: WebMcpStatus): string {
 
 function TestProposalCard({
   proposal,
+  verifications,
   onReview,
 }: {
   readonly proposal: TestCaseProposal;
+  readonly verifications: readonly VerificationResult[];
   readonly onReview: (proposal: TestCaseProposal, action: "approve" | "reject") => void;
 }) {
   return (
@@ -313,10 +333,62 @@ function TestProposalCard({
           <button className="secondary-action" type="button" onClick={() => onReview(proposal, "reject")}>Reject</button>
         </div>
       ) : proposal.status === "approved" ? (
-        <p className="applied-note">Required for release · Not executed</p>
+        <p className="applied-note">
+          Required for release · {verifications.length === 0 ? "Awaiting verification" : `${verifications.length} verification run(s)`}
+        </p>
       ) : null}
+      {verifications.map((verification) => (
+        <VerificationResultCard
+          key={verification.verificationResultId}
+          verification={verification}
+        />
+      ))}
     </article>
   );
+}
+
+function VerificationResultCard({
+  verification,
+}: {
+  readonly verification: VerificationResult;
+}) {
+  return (
+    <section className={`verification-result verification-${verification.verdict}`}>
+      <div className="verification-topline">
+        <span>VERIFICATION · {verification.verificationResultId}</span>
+        <strong>{verificationVerdictLabel(verification)}</strong>
+      </div>
+      <p className="verification-strategy">
+        {verificationStrategyLabel(verification)}
+      </p>
+      {verification.strategy === "seeded_monkey" && (
+        <p className="verification-meta">
+          Seed {verification.seed} · {verification.executedSteps} of {verification.maxSteps} steps
+        </p>
+      )}
+      <p>{verification.summary}</p>
+      <p className="verification-meta">
+        {verification.observedSideEffects} side effects observed
+      </p>
+      <ul className="assertion-list">
+        {verification.assertions.map((assertion) => (
+          <li key={assertion.name}>
+            <strong>{assertion.passed ? "PASS" : "FAIL"}</strong>
+            <span>{assertion.name.replaceAll("_", " ")}</span>
+            <small>{assertion.observed}</small>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function verificationVerdictLabel(verification: VerificationResult): string {
+  return verification.verdict.replaceAll("_", " ").toUpperCase();
+}
+
+function verificationStrategyLabel(verification: VerificationResult): string {
+  return verification.strategy.replaceAll("_", " ").toUpperCase();
 }
 
 function DecisionProposalCard({
@@ -338,7 +410,9 @@ function DecisionProposalCard({
       <p className="proposal-recommendation">{proposal.recommendation.toUpperCase()}</p>
       <h3>Why</h3>
       <p>{proposal.rationale}</p>
-      {proposal.testProposalId && <p className="unblock-note">Unblock when {proposal.testProposalId} passes.</p>}
+      <p className="unblock-note">
+        Test {proposal.testProposalId} · Verification {proposal.verificationResultId}
+      </p>
       <p className="evidence-refs">Evidence · {proposal.evidenceIds.join(" · ")}</p>
       {proposal.status === "pending" && (
         <div className="button-row">
@@ -375,6 +449,8 @@ function toolNameForActivity(action: ActivityEntry["action"]): string | undefine
       return "query_network_evidence";
     case "proposed_test_case":
       return "propose_test_case";
+    case "ran_approved_verification":
+      return "run_approved_verification";
     case "proposed_release_decision":
       return "propose_release_decision";
     default:

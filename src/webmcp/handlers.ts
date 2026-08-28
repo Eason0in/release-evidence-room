@@ -2,12 +2,14 @@ import {
   getReleaseSnapshot,
   queryNetworkEvidence,
   type Proposal,
+  type VerificationResult,
 } from "../domain/evidence";
 import type { ReleaseRoomStore } from "../domain/store";
 import {
   proposeReleaseDecision,
   proposeTestCase,
   recordAgentRead,
+  runApprovedVerification,
   type WorkflowResult,
 } from "../domain/workflow";
 import type { ReleaseEvidenceHandlers } from "./tools";
@@ -26,6 +28,11 @@ function publicProposal(proposal: Proposal) {
   return publicValue;
 }
 
+function publicVerification(verification: VerificationResult) {
+  const { requestFingerprint: _requestFingerprint, ...publicValue } = verification;
+  return publicValue;
+}
+
 function publicWorkflowResult(result: WorkflowResult<Proposal>) {
   if (!result.ok) return result;
   const { requestFingerprint: _requestFingerprint, ...proposal } = result.value;
@@ -34,6 +41,32 @@ function publicWorkflowResult(result: WorkflowResult<Proposal>) {
     replayed: result.replayed,
     stateVersion: result.state.stateVersion,
     proposal,
+  };
+}
+
+function publicVerificationWorkflowResult(
+  result: WorkflowResult<VerificationResult>,
+) {
+  if (!result.ok) return result;
+  return {
+    ok: true as const,
+    replayed: result.replayed,
+    stateVersion: result.state.stateVersion,
+    verification: publicVerification(result.value),
+  };
+}
+
+function verificationCounts(verifications: readonly VerificationResult[]) {
+  return {
+    riskConfirmed: verifications.filter(
+      (verification) => verification.verdict === "risk_confirmed",
+    ).length,
+    notReproduced: verifications.filter(
+      (verification) => verification.verdict === "not_reproduced",
+    ).length,
+    inconclusive: verifications.filter(
+      (verification) => verification.verdict === "inconclusive",
+    ).length,
   };
 }
 
@@ -47,6 +80,8 @@ export function createReleaseEvidenceHandlers(
         ...getReleaseSnapshot(state),
         proposalCounts: proposalCounts(state.proposals),
         proposals: state.proposals.map(publicProposal),
+        verificationCounts: verificationCounts(state.verifications),
+        verifications: state.verifications.map(publicVerification),
       };
       store.setState(
         recordAgentRead(
@@ -75,6 +110,12 @@ export function createReleaseEvidenceHandlers(
       const result = proposeTestCase(state, input);
       if (result.ok && result.state !== state) store.setState(result.state);
       return publicWorkflowResult(result);
+    },
+    runApprovedVerification(input, _signal) {
+      const state = store.getState();
+      const result = runApprovedVerification(state, input);
+      if (result.ok && result.state !== state) store.setState(result.state);
+      return publicVerificationWorkflowResult(result);
     },
     proposeReleaseDecision(input, _signal) {
       const state = store.getState();
