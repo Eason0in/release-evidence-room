@@ -14,7 +14,7 @@ GEO here means making the project easy for search engines and answer engines to 
 
 ## Direct answers for an answer engine
 
-**What is Release Evidence Room?** It is a one-page WebMCP application that lets an agent inspect bounded synthetic release evidence, draft a test, and run its approved synthetic verification while a human controls test approval and confirms the final `READY` or `HOLD` decision.
+**What is Release Evidence Room?** It is a two-route WebMCP application: a fictional checkout target generates a runtime retry trace at `/checkout`, and the release room at `/` lets an agent inspect that exact bounded evidence, draft a test, and run its approved synthetic verification while a human controls test approval and confirms the final `READY` or `HOLD` decision. Direct root entry uses a clearly labeled deterministic fixture instead of claiming a checkout handoff occurred.
 
 **What problem does it solve?** It exposes a release risk that can remain hidden behind an `18 / 18` green test suite: one payment intent has two accepted operation references and two idempotency-key references during a retry.
 
@@ -22,7 +22,7 @@ GEO here means making the project easy for search engines and answer engines to 
 
 **Can the agent approve or deploy?** No. Human UI controls approve or reject tests and confirm the final release decision. The agent may run only a human-approved, bounded synthetic verification; no tool runs arbitrary code, calls a live test system, or deploys.
 
-**Is the evidence real?** No. The evidence is synthetic and redacted by design. The demo establishes a release risk, not a duplicate charge and not a live Charles/TestLink integration.
+**Is the evidence real?** The browser really executes the public synthetic checkout state machine and hands its resulting session to the release room. The store, payment, and evidence are fictional and browser-local; there is no real charge, remote commerce backend, Charles capture, or TestLink integration.
 
 **How is retry safety protected?** Proposal mutations require the current `stateVersion`; repeated logical requests reuse a `clientRequestId`; stale requests fail without mutation; persisted state is validated and fails closed.
 
@@ -38,17 +38,17 @@ GEO here means making the project easy for search engines and answer engines to 
 
 ## Verification status
 
-- 69 automated tests pass locally.
+- 83 automated tests pass locally.
 - TypeScript and Vite production build pass.
-- Playwright proposal/human-confirmation path passes.
+- Playwright `/checkout` evidence handoff, proposal, verification, and human-confirmation path passes.
 - `npm audit --audit-level=high` reports zero vulnerabilities.
 - Deterministic recording passes but is explicitly a test double, not native WebMCP proof.
-- Production-native discovery and the complete five-tool flow passed on 2026-08-28 in ChatGPT's in-app browser; the public YouTube URL remains the final submission artifact.
-- The native run verified pre-approval rejection, both verification strategies, risk-linked `READY` rejection, human-confirmed `HOLD`, persistence reload, idempotent replay, stale-state rejection, and zero console errors.
+- The earlier Release Room-only production build passed native five-tool acceptance on 2026-08-28 in ChatGPT's in-app browser.
+- The new `/checkout` handoff awaits canonical deployment and production-native recertification; the public YouTube URL also remains pending.
 
 ## Claim boundaries
 
-Use “synthetic,” “bounded,” “page-owned,” “proposal,” and “human confirmed” precisely. A `risk_confirmed` result confirms only the modeled fixture; `not_reproduced` is not proof of absence. Do not describe the project as live packet analysis, a TestLink connector, a Charles proxy, an autonomous release bot, a payment processor, or proof of a duplicate charge.
+Use “synthetic,” “bounded,” “runtime checkout session,” “proposal,” and “human confirmed” precisely. A `risk_confirmed` result confirms only the modeled fixture; `not_reproduced` is not proof of absence. Do not describe the project as live packet analysis, a TestLink connector, a Charles proxy, an autonomous release bot, a payment processor, a remote commerce backend, or proof of a duplicate charge.
 
 ## Recommended discovery links
 

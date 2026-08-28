@@ -1,6 +1,8 @@
 This is Release Evidence Room, a WebMCP-powered release review room. It answers a practical question: can an agent find a release risk that a green test dashboard misses, while a human keeps accountability?
 
-This synthetic mobile checkout candidate shows eighteen of eighteen tests passing. The prompt asks the agent to review payment-retry safety using only evidence owned by this page.
+First, the public fictional checkout target accepts a payment attempt but loses its response. Retrying the same intent with a new idempotency key creates a second operation. No real payment or backend is involved. I send that exact browser-local session into the Release Evidence Room, where eighteen of eighteen existing tests still pass.
+
+The prompt asks the agent to review payment-retry safety using only evidence owned by this session.
 
 The agent calls get_release_snapshot to read the release and its coverage gaps, then query_network_evidence to filter the redacted retry records. One payment intent has two accepted operation references and two idempotency-key references. That is a bounded release risk, not proof of a duplicate charge.
 

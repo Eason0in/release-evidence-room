@@ -38,6 +38,11 @@ describe("Release Evidence Room", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("UNDECIDED")).toBeInTheDocument();
     expect(screen.getByText("WebMCP · 5 tools available")).toBeInTheDocument();
+    expect(screen.getByText("checkout_session_017")).toBeInTheDocument();
+    expect(screen.getByText("DETERMINISTIC FIXTURE")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open Checkout QA Sandbox" }),
+    ).toHaveAttribute("href", "/checkout");
     expect(screen.getByText("No deploy action is exposed.")).toBeInTheDocument();
     expect(
       screen.queryByText(/one payment intent produced two accepted operation refs/i),
