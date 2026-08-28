@@ -1,6 +1,7 @@
 import { createDemoReleaseState, type ReleaseState } from "./evidence";
+import { runSyntheticVerification } from "./verification";
 
-export const RELEASE_ROOM_STORAGE_KEY = "release-evidence-room/v1";
+export const RELEASE_ROOM_STORAGE_KEY = "release-evidence-room/v2";
 
 export interface ReleaseRoomStore {
   getState(): ReleaseState;
@@ -10,7 +11,7 @@ export interface ReleaseRoomStore {
 }
 
 interface StoredReleaseRoom {
-  readonly schemaVersion: "release-evidence-room/v1";
+  readonly schemaVersion: "release-evidence-room/v2";
   readonly state: ReleaseState;
 }
 
@@ -51,10 +52,56 @@ function isProposal(value: unknown): boolean {
       isOneOf(value.status, ["pending", "confirmed", "rejected"]) &&
       isOneOf(value.recommendation, ["ready", "hold"]) &&
       typeof value.rationale === "string" &&
-      (value.testProposalId === undefined || typeof value.testProposalId === "string")
+      typeof value.testProposalId === "string" &&
+      typeof value.verificationResultId === "string"
     );
   }
   return false;
+}
+
+function isVerificationResult(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const assertionsValid =
+    Array.isArray(value.assertions) &&
+    value.assertions.every(
+      (assertion) =>
+        isRecord(assertion) &&
+        isOneOf(assertion.name, ["stable_retry_key", "single_side_effect"]) &&
+        typeof assertion.passed === "boolean" &&
+        typeof assertion.expected === "string" &&
+        typeof assertion.observed === "string",
+    );
+  const commonValid =
+    typeof value.verificationResultId === "string" &&
+    typeof value.clientRequestId === "string" &&
+    typeof value.requestFingerprint === "string" &&
+    typeof value.testProposalId === "string" &&
+    isOneOf(value.strategy, ["targeted_retry", "seeded_monkey"]) &&
+    isOneOf(value.verdict, [
+      "risk_confirmed",
+      "not_reproduced",
+      "inconclusive",
+    ]) &&
+    Number.isInteger(value.observedSideEffects) &&
+    Number(value.observedSideEffects) >= 0 &&
+    Number.isInteger(value.executedSteps) &&
+    Number(value.executedSteps) >= 0 &&
+    assertionsValid &&
+    isStringArray(value.trace) &&
+    typeof value.summary === "string";
+  if (!commonValid) return false;
+  if (value.strategy === "targeted_retry") {
+    return value.seed === undefined && value.maxSteps === undefined;
+  }
+  return (
+    Number.isInteger(value.seed) &&
+    Number(value.seed) >= 0 &&
+    Number(value.seed) <= 2_147_483_647 &&
+    Number.isInteger(value.maxSteps) &&
+    Number(value.maxSteps) >= 1 &&
+    Number(value.maxSteps) <= 100 &&
+    Number(value.executedSteps) <= Number(value.maxSteps)
+  );
 }
 
 function isConsistentState(state: ReleaseState): boolean {
@@ -69,17 +116,72 @@ function isConsistentState(state: ReleaseState): boolean {
   }
 
   const proposalIds = new Set(state.proposals.map((proposal) => proposal.proposalId));
-  const requestIds = new Set(state.proposals.map((proposal) => proposal.clientRequestId));
-  if (proposalIds.size !== state.proposals.length || requestIds.size !== state.proposals.length) {
+  const verificationIds = new Set(
+    state.verifications.map((verification) => verification.verificationResultId),
+  );
+  const requestIds = new Set([
+    ...state.proposals.map((proposal) => proposal.clientRequestId),
+    ...state.verifications.map((verification) => verification.clientRequestId),
+  ]);
+  if (
+    proposalIds.size !== state.proposals.length ||
+    verificationIds.size !== state.verifications.length ||
+    requestIds.size !== state.proposals.length + state.verifications.length
+  ) {
     return false;
   }
 
+  for (const verification of state.verifications) {
+    const linkedTest = state.proposals.find(
+      (proposal) => proposal.proposalId === verification.testProposalId,
+    );
+    if (linkedTest?.kind !== "test_case" || linkedTest.status !== "approved") {
+      return false;
+    }
+    const expectedOutcome =
+      verification.strategy === "targeted_retry"
+        ? runSyntheticVerification(state, {
+            strategy: verification.strategy,
+            evidenceIds: linkedTest.evidenceIds,
+          })
+        : runSyntheticVerification(state, {
+            strategy: verification.strategy,
+            evidenceIds: linkedTest.evidenceIds,
+            seed: verification.seed!,
+            maxSteps: verification.maxSteps!,
+          });
+    if (
+      verification.verdict !== expectedOutcome.verdict ||
+      verification.observedSideEffects !== expectedOutcome.observedSideEffects ||
+      verification.executedSteps !== expectedOutcome.executedSteps ||
+      verification.summary !== expectedOutcome.summary ||
+      verification.seed !== expectedOutcome.seed ||
+      verification.maxSteps !== expectedOutcome.maxSteps ||
+      JSON.stringify(verification.assertions) !==
+        JSON.stringify(expectedOutcome.assertions) ||
+      JSON.stringify(verification.trace) !== JSON.stringify(expectedOutcome.trace)
+    ) {
+      return false;
+    }
+  }
+
   for (const proposal of state.proposals) {
-    if (proposal.kind !== "release_decision" || !proposal.testProposalId) continue;
+    if (proposal.kind !== "release_decision") continue;
     const linkedTest = state.proposals.find(
       (candidate) => candidate.proposalId === proposal.testProposalId,
     );
     if (linkedTest?.kind !== "test_case" || linkedTest.status !== "approved") return false;
+    const linkedVerification = state.verifications.find(
+      (verification) =>
+        verification.verificationResultId === proposal.verificationResultId,
+    );
+    if (linkedVerification?.testProposalId !== proposal.testProposalId) return false;
+    if (
+      proposal.recommendation === "ready" &&
+      linkedVerification.verdict !== "not_reproduced"
+    ) {
+      return false;
+    }
   }
 
   if (state.activity.some((entry, index) => {
@@ -180,6 +282,12 @@ function isReleaseState(value: unknown): value is ReleaseState {
   ) {
     return false;
   }
+  if (
+    !Array.isArray(value.verifications) ||
+    !value.verifications.every(isVerificationResult)
+  ) {
+    return false;
+  }
   if (!isStringArray(value.focusedEvidenceIds)) return false;
   const validActivity =
     Array.isArray(value.activity) &&
@@ -195,6 +303,7 @@ function isReleaseState(value: unknown): value is ReleaseState {
           "proposed_test_case",
           "approved_test_case",
           "rejected_test_case",
+          "ran_approved_verification",
           "proposed_release_decision",
           "confirmed_release_ready",
           "confirmed_release_hold",
@@ -215,7 +324,7 @@ function readState(storage: Storage): ReleaseState | undefined {
     const parsed: unknown = JSON.parse(raw);
     if (
       !isRecord(parsed) ||
-      parsed.schemaVersion !== "release-evidence-room/v1" ||
+      parsed.schemaVersion !== "release-evidence-room/v2" ||
       !isReleaseState(parsed.state)
     ) {
       return undefined;
@@ -228,7 +337,7 @@ function readState(storage: Storage): ReleaseState | undefined {
 
 function writeState(storage: Storage, state: ReleaseState): void {
   const stored: StoredReleaseRoom = {
-    schemaVersion: "release-evidence-room/v1",
+    schemaVersion: "release-evidence-room/v2",
     state,
   };
   storage.setItem(RELEASE_ROOM_STORAGE_KEY, JSON.stringify(stored));

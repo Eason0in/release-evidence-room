@@ -4,7 +4,9 @@ import type {
   ReleaseDecisionProposal,
   ReleaseState,
   TestCaseProposal,
+  VerificationResult,
 } from "./evidence";
+import { runSyntheticVerification } from "./verification";
 
 export interface TestCaseProposalInput {
   readonly expectedStateVersion: number;
@@ -22,13 +24,32 @@ export interface ReleaseDecisionProposalInput {
   readonly recommendation: "ready" | "hold";
   readonly rationale: string;
   readonly evidenceIds: readonly string[];
-  readonly testProposalId?: string;
+  readonly testProposalId: string;
+  readonly verificationResultId: string;
 }
+
+interface ApprovedVerificationInputBase {
+  readonly expectedStateVersion: number;
+  readonly clientRequestId: string;
+  readonly testProposalId: string;
+}
+
+export type ApprovedVerificationInput = ApprovedVerificationInputBase &
+  (
+    | { readonly strategy: "targeted_retry" }
+    | {
+        readonly strategy: "seeded_monkey";
+        readonly seed: number;
+        readonly maxSteps: number;
+      }
+  );
 
 type WorkflowErrorCode =
   | "state_conflict"
   | "invalid_evidence"
   | "invalid_test_proposal"
+  | "invalid_verification_input"
+  | "invalid_verification_result"
   | "request_id_reused"
   | "proposal_not_found"
   | "proposal_not_pending"
@@ -41,14 +62,14 @@ export interface WorkflowError {
   readonly message: string;
 }
 
-export interface WorkflowSuccess<T extends Proposal> {
+export interface WorkflowSuccess<T> {
   readonly ok: true;
   readonly replayed: boolean;
   readonly state: ReleaseState;
   readonly value: T;
 }
 
-export type WorkflowResult<T extends Proposal> = WorkflowSuccess<T> | WorkflowError;
+export type WorkflowResult<T> = WorkflowSuccess<T> | WorkflowError;
 
 export function recordAgentRead(
   state: ReleaseState,
@@ -89,7 +110,18 @@ function fingerprintReleaseDecision(input: ReleaseDecisionProposalInput): string
     recommendation: input.recommendation,
     rationale: input.rationale,
     evidenceIds: [...input.evidenceIds].sort(),
-    testProposalId: input.testProposalId ?? null,
+    testProposalId: input.testProposalId,
+    verificationResultId: input.verificationResultId,
+  });
+}
+
+function fingerprintVerification(input: ApprovedVerificationInput): string {
+  return JSON.stringify({
+    kind: "verification",
+    testProposalId: input.testProposalId,
+    strategy: input.strategy,
+    seed: input.strategy === "seeded_monkey" ? input.seed : null,
+    maxSteps: input.strategy === "seeded_monkey" ? input.maxSteps : null,
   });
 }
 
@@ -102,7 +134,21 @@ function findReplay<T extends Proposal>(
   const existing = state.proposals.find(
     (proposal) => proposal.clientRequestId === clientRequestId,
   );
-  if (!existing) return undefined;
+  if (!existing) {
+    if (
+      state.verifications.some(
+        (verification) => verification.clientRequestId === clientRequestId,
+      )
+    ) {
+      return {
+        ok: false,
+        code: "request_id_reused",
+        currentStateVersion: state.stateVersion,
+        message: `Client request ID ${clientRequestId} was already used for different content.`,
+      };
+    }
+    return undefined;
+  }
 
   if (existing.requestFingerprint !== fingerprint || existing.kind !== kind) {
     return {
@@ -147,6 +193,51 @@ function checkEvidence(
     currentStateVersion: state.stateVersion,
     message: `Evidence ${invalid} is not present in this room.`,
   };
+}
+
+function checkVerificationInput(
+  state: ReleaseState,
+  input: ApprovedVerificationInput,
+): WorkflowError | undefined {
+  if (
+    input.strategy !== "targeted_retry" &&
+    input.strategy !== "seeded_monkey"
+  ) {
+    return {
+      ok: false,
+      code: "invalid_verification_input",
+      currentStateVersion: state.stateVersion,
+      message: "Verification strategy is not supported.",
+    };
+  }
+  if (
+    input.strategy === "targeted_retry" &&
+    ("seed" in input || "maxSteps" in input)
+  ) {
+    return {
+      ok: false,
+      code: "invalid_verification_input",
+      currentStateVersion: state.stateVersion,
+      message: "targeted_retry does not accept seed or maxSteps.",
+    };
+  }
+  if (
+    input.strategy === "seeded_monkey" &&
+    (!Number.isInteger(input.seed) ||
+      input.seed < 0 ||
+      input.seed > 2_147_483_647 ||
+      !Number.isInteger(input.maxSteps) ||
+      input.maxSteps < 1 ||
+      input.maxSteps > 100)
+  ) {
+    return {
+      ok: false,
+      code: "invalid_verification_input",
+      currentStateVersion: state.stateVersion,
+      message: "seeded_monkey requires seed 0–2147483647 and maxSteps 1–100.",
+    };
+  }
+  return undefined;
 }
 
 function proposalId(state: ReleaseState): string {
@@ -232,18 +323,38 @@ export function proposeReleaseDecision(
   const invalidEvidence = checkEvidence(state, input.evidenceIds);
   if (invalidEvidence) return invalidEvidence;
 
-  if (input.testProposalId) {
-    const testProposal = state.proposals.find(
-      (proposal) => proposal.proposalId === input.testProposalId,
-    );
-    if (testProposal?.kind !== "test_case" || testProposal.status !== "approved") {
-      return {
-        ok: false,
-        code: "invalid_test_proposal",
-        currentStateVersion: state.stateVersion,
-        message: `Test proposal ${input.testProposalId} is not approved.`,
-      };
-    }
+  const testProposal = state.proposals.find(
+    (proposal) => proposal.proposalId === input.testProposalId,
+  );
+  if (testProposal?.kind !== "test_case" || testProposal.status !== "approved") {
+    return {
+      ok: false,
+      code: "invalid_test_proposal",
+      currentStateVersion: state.stateVersion,
+      message: `Test proposal ${input.testProposalId} is not approved.`,
+    };
+  }
+
+  const verification = state.verifications.find(
+    (candidate) =>
+      candidate.verificationResultId === input.verificationResultId &&
+      candidate.testProposalId === input.testProposalId,
+  );
+  if (!verification) {
+    return {
+      ok: false,
+      code: "invalid_verification_result",
+      currentStateVersion: state.stateVersion,
+      message: `Verification result ${input.verificationResultId} does not validate ${input.testProposalId}.`,
+    };
+  }
+  if (input.recommendation === "ready" && verification.verdict !== "not_reproduced") {
+    return {
+      ok: false,
+      code: "invalid_verification_result",
+      currentStateVersion: state.stateVersion,
+      message: `READY requires a not_reproduced verification result.`,
+    };
   }
 
   const proposal: ReleaseDecisionProposal = {
@@ -256,6 +367,7 @@ export function proposeReleaseDecision(
     rationale: input.rationale,
     evidenceIds: [...input.evidenceIds],
     testProposalId: input.testProposalId,
+    verificationResultId: input.verificationResultId,
   };
 
   return appendMutation(state, proposal, {
@@ -264,6 +376,92 @@ export function proposeReleaseDecision(
     summary: `${proposal.proposalId} recommends ${proposal.recommendation.toUpperCase()} and awaits a human decision.`,
     clientRequestId: input.clientRequestId,
   });
+}
+
+export function runApprovedVerification(
+  state: ReleaseState,
+  input: ApprovedVerificationInput,
+): WorkflowResult<VerificationResult> {
+  const invalidInput = checkVerificationInput(state, input);
+  if (invalidInput) return invalidInput;
+  const requestFingerprint = fingerprintVerification(input);
+  const existing = state.verifications.find(
+    (verification) => verification.clientRequestId === input.clientRequestId,
+  );
+  if (existing) {
+    if (existing.requestFingerprint !== requestFingerprint) {
+      return {
+        ok: false,
+        code: "request_id_reused",
+        currentStateVersion: state.stateVersion,
+        message: `Client request ID ${input.clientRequestId} was already used for different content.`,
+      };
+    }
+    return { ok: true, replayed: true, state, value: existing };
+  }
+  if (
+    state.proposals.some(
+      (proposal) => proposal.clientRequestId === input.clientRequestId,
+    )
+  ) {
+    return {
+      ok: false,
+      code: "request_id_reused",
+      currentStateVersion: state.stateVersion,
+      message: `Client request ID ${input.clientRequestId} was already used for different content.`,
+    };
+  }
+
+  const conflict = checkStateVersion(state, input.expectedStateVersion);
+  if (conflict) return conflict;
+  const testProposal = state.proposals.find(
+    (proposal) => proposal.proposalId === input.testProposalId,
+  );
+  if (testProposal?.kind !== "test_case" || testProposal.status !== "approved") {
+    return {
+      ok: false,
+      code: "invalid_test_proposal",
+      currentStateVersion: state.stateVersion,
+      message: `Test proposal ${input.testProposalId} is not approved.`,
+    };
+  }
+  const outcome =
+    input.strategy === "targeted_retry"
+      ? runSyntheticVerification(state, {
+          strategy: input.strategy,
+          evidenceIds: testProposal.evidenceIds,
+        })
+      : runSyntheticVerification(state, {
+          strategy: input.strategy,
+          evidenceIds: testProposal.evidenceIds,
+          seed: input.seed,
+          maxSteps: input.maxSteps,
+        });
+  const verification: VerificationResult = {
+    verificationResultId: `V-${String(state.verifications.length + 1).padStart(3, "0")}`,
+    clientRequestId: input.clientRequestId,
+    requestFingerprint,
+    testProposalId: input.testProposalId,
+    ...outcome,
+  };
+  const nextVersion = state.stateVersion + 1;
+  const activity: ActivityEntry = {
+    eventId: `A-${String(state.activity.length + 1).padStart(3, "0")}`,
+    sequence: state.activity.length + 1,
+    actor: "agent",
+    action: "ran_approved_verification",
+    summary: `${verification.verificationResultId} completed with ${verification.verdict}.`,
+    fromVersion: state.stateVersion,
+    toVersion: nextVersion,
+    clientRequestId: input.clientRequestId,
+  };
+  const nextState: ReleaseState = {
+    ...state,
+    stateVersion: nextVersion,
+    verifications: [...state.verifications, verification],
+    activity: [...state.activity, activity],
+  };
+  return { ok: true, replayed: false, state: nextState, value: verification };
 }
 
 function reviewProposal<T extends Proposal>(

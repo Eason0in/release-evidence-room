@@ -33,7 +33,7 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Release Evidence Room" }),
   ).toBeVisible();
-  await expect(page.getByText("WebMCP · 4 tools available")).toBeVisible();
+  await expect(page.getByText("WebMCP · 5 tools available")).toBeVisible();
   await expect(page.getByText("18 / 18")).toBeVisible();
   await addDemoWatermark(page);
   await demoPause(page, 5_000);
@@ -57,6 +57,7 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
       "propose_release_decision",
       "propose_test_case",
       "query_network_evidence",
+      "run_approved_verification",
     ].sort(),
   );
   expect(toolNames.some((name) => name.includes("deploy"))).toBe(false);
@@ -107,17 +108,49 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   await demoPause(page, 2_000);
   await demoToolCall(
     page,
+    "run_approved_verification",
+    "Replay the approved retry case in the bounded synthetic ledger.",
+  );
+  await invokeTool(page, "run_approved_verification", {
+    expectedStateVersion: 14,
+    clientRequestId: "req-e2e-targeted-01",
+    testProposalId: "P-017",
+    strategy: "targeted_retry",
+  });
+  await expect(page.getByText("VERIFICATION · V-001")).toBeVisible();
+  await expect(page.getByText("TARGETED RETRY", { exact: true })).toBeVisible();
+  await demoPause(page, 4_000);
+  await demoToolCall(
+    page,
+    "run_approved_verification",
+    "Explore the same approved boundary with seed 37 and at most 20 steps.",
+  );
+  await invokeTool(page, "run_approved_verification", {
+    expectedStateVersion: 15,
+    clientRequestId: "req-e2e-monkey-01",
+    testProposalId: "P-017",
+    strategy: "seeded_monkey",
+    seed: 37,
+    maxSteps: 20,
+  });
+  await expect(page.getByText("VERIFICATION · V-002")).toBeVisible();
+  await expect(page.getByText("SEEDED MONKEY", { exact: true })).toBeVisible();
+  await expect(page.getByText(/seed 37 · 4 of 20 steps/i)).toBeVisible();
+  await demoPause(page, 4_000);
+  await demoToolCall(
+    page,
     "propose_release_decision",
     "Recommend HOLD without changing the human decision.",
   );
   await invokeTool(page, "propose_release_decision", {
-    expectedStateVersion: 14,
+    expectedStateVersion: 16,
     clientRequestId: "req-e2e-decision-01",
     recommendation: "hold",
     rationale:
-      "Exactly-once behavior is unproven until the approved retry test passes.",
+      "Both approved sandbox strategies reproduced duplicate side effects.",
     evidenceIds: ["netev_retry_017", "netev_response_016"],
     testProposalId: "P-017",
+    verificationResultId: "V-002",
   });
 
   await expect(page.locator(".proposal-recommendation")).toHaveText("HOLD");
@@ -133,17 +166,31 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   await demoPause(page, 8_000);
 
   const persisted = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("release-evidence-room/v1")!),
+    JSON.parse(localStorage.getItem("release-evidence-room/v2")!),
   );
   expect(persisted.state).toMatchObject({
-    stateVersion: 16,
+    stateVersion: 18,
     humanDecision: "hold",
     proposals: [
       { proposalId: "P-017", status: "approved" },
       { proposalId: "P-018", status: "confirmed" },
     ],
+    verifications: [
+      {
+        verificationResultId: "V-001",
+        strategy: "targeted_retry",
+        verdict: "risk_confirmed",
+      },
+      {
+        verificationResultId: "V-002",
+        strategy: "seeded_monkey",
+        verdict: "risk_confirmed",
+        seed: 37,
+        maxSteps: 20,
+      },
+    ],
   });
-  expect(persisted.state.activity).toHaveLength(7);
+  expect(persisted.state.activity).toHaveLength(9);
 });
 
 async function demoPause(

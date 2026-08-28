@@ -167,6 +167,21 @@ td code { color: #c7d3dc; font: 11px ui-monospace, monospace; }
 .primary-action { background: var(--blue); color: #071118; }
 .danger-action { background: var(--danger); color: #170805; }
 .applied-note { margin: 12px 0 0 !important; padding-top: 10px; border-top: 1px solid var(--line); color: var(--pass); font-weight: 700; }
+.verification-result { margin-top: 13px; padding: 12px; border: 1px solid var(--line); background: #0a1117; }
+.verification-risk_confirmed { border-left: 3px solid var(--danger); }
+.verification-not_reproduced { border-left: 3px solid var(--pass); }
+.verification-inconclusive { border-left: 3px solid var(--amber); }
+.verification-topline { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font: 700 9px/1.3 ui-monospace, monospace; letter-spacing: .05em; }
+.verification-topline strong { color: var(--danger); }
+.verification-not_reproduced .verification-topline strong { color: var(--pass); }
+.verification-inconclusive .verification-topline strong { color: var(--amber); }
+.verification-strategy { margin: 10px 0 5px; color: var(--blue); font: 800 12px/1.3 ui-monospace, monospace; }
+.verification-result > p { font-size: 11px; line-height: 1.45; }
+.verification-meta { color: var(--muted); font: 10px/1.4 ui-monospace, monospace !important; }
+.assertion-list { display: grid; gap: 5px; margin: 10px 0 0; padding: 0; list-style: none; }
+.assertion-list li { display: grid; grid-template-columns: 34px 1fr; gap: 6px; align-items: baseline; font: 9px/1.4 ui-monospace, monospace; }
+.assertion-list strong { color: var(--amber); }
+.assertion-list small { grid-column: 2; color: var(--muted); }
 .proposal-recommendation { margin: 13px 0 7px !important; color: var(--danger); font: 900 31px/1 ui-monospace, monospace !important; }
 .unblock-note { padding: 9px 10px; background: #251d12; color: var(--amber); }
 .notice { min-height: 18px; margin: 12px 0 0; color: var(--muted); font-size: 11px; }

@@ -12,21 +12,23 @@ function createHandlers(): ReleaseEvidenceHandlers {
     getReleaseSnapshot: vi.fn(() => ({ releaseId: "rel_demo_1042" })),
     queryNetworkEvidence: vi.fn((input) => ({ input })),
     proposeTestCase: vi.fn((input) => ({ input })),
+    runApprovedVerification: vi.fn((input) => ({ input })),
     proposeReleaseDecision: vi.fn((input) => ({ input })),
   };
 }
 
 describe("WebMCP tools", () => {
-  it("defines exactly four uniquely named tools with strict schemas", () => {
+  it("defines exactly five uniquely named tools with strict schemas", () => {
     const tools = createReleaseEvidenceTools(createHandlers());
 
     expect(tools.map((tool) => tool.name)).toEqual([
       "get_release_snapshot",
       "query_network_evidence",
       "propose_test_case",
+      "run_approved_verification",
       "propose_release_decision",
     ]);
-    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(4);
+    expect(new Set(tools.map((tool) => tool.name))).toHaveLength(5);
     for (const tool of tools) {
       expect(tool.inputSchema).toMatchObject({
         type: "object",
@@ -37,6 +39,7 @@ describe("WebMCP tools", () => {
     expect(tools[1].annotations?.readOnlyHint).toBe(false);
     expect(tools[2].annotations?.readOnlyHint).toBe(false);
     expect(tools[3].annotations?.readOnlyHint).toBe(false);
+    expect(tools[4].annotations?.readOnlyHint).toBe(false);
   });
 
   it("rejects risk filters that have no evidence in the room", async () => {
@@ -68,6 +71,28 @@ describe("WebMCP tools", () => {
     expect(releaseToolSchemas.releaseDecision.properties.testProposalId).toMatchObject({
       description: expect.stringMatching(/approved test/i),
     });
+    expect(releaseToolSchemas.verification.properties.strategy).toMatchObject({
+      enum: ["targeted_retry", "seeded_monkey"],
+    });
+    expect(releaseToolSchemas.verification.properties.maxSteps).toMatchObject({
+      minimum: 1,
+      maximum: 100,
+    });
+    expect(releaseToolSchemas.verification.oneOf).toEqual([
+      {
+        properties: { strategy: { const: "targeted_retry" } },
+        not: {
+          anyOf: [{ required: ["seed"] }, { required: ["maxSteps"] }],
+        },
+      },
+      {
+        properties: { strategy: { const: "seeded_monkey" } },
+        required: ["seed", "maxSteps"],
+      },
+    ]);
+    expect(releaseToolSchemas.releaseDecision.properties.verificationResultId).toMatchObject({
+      description: expect.stringMatching(/verification result/i),
+    });
   });
 
   it("quietly preserves the normal UI when WebMCP is unavailable", async () => {
@@ -86,7 +111,7 @@ describe("WebMCP tools", () => {
 
     const dispose = await registerReleaseEvidenceTools(createHandlers(), registry);
 
-    expect(registry.registerTool).toHaveBeenCalledTimes(4);
+    expect(registry.registerTool).toHaveBeenCalledTimes(5);
     expect(new Set(signals)).toHaveLength(1);
     expect(signals[0].aborted).toBe(false);
     dispose?.();
@@ -175,6 +200,65 @@ describe("WebMCP tools", () => {
       expect.objectContaining({ clientRequestId: "req-demo-test-01" }),
       controller.signal,
     );
+  });
+
+  it("accepts only bounded verification strategies", async () => {
+    const handlers = createHandlers();
+    const tool = createReleaseEvidenceTools(handlers)[3];
+    const controller = new AbortController();
+
+    await tool.execute(
+      {
+        expectedStateVersion: 14,
+        clientRequestId: "verify-targeted-001",
+        testProposalId: "P-017",
+        strategy: "targeted_retry",
+      },
+      { signal: controller.signal },
+    );
+    await tool.execute(
+      {
+        expectedStateVersion: 15,
+        clientRequestId: "verify-monkey-001",
+        testProposalId: "P-017",
+        strategy: "seeded_monkey",
+        seed: 37,
+        maxSteps: 20,
+      },
+      { signal: controller.signal },
+    );
+
+    expect(handlers.runApprovedVerification).toHaveBeenNthCalledWith(
+      1,
+      {
+        expectedStateVersion: 14,
+        clientRequestId: "verify-targeted-001",
+        testProposalId: "P-017",
+        strategy: "targeted_retry",
+      },
+      controller.signal,
+    );
+    expect(handlers.runApprovedVerification).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ strategy: "seeded_monkey", seed: 37, maxSteps: 20 }),
+      controller.signal,
+    );
+
+    await expect(
+      Promise.resolve().then(() =>
+        tool.execute(
+          {
+            expectedStateVersion: 15,
+            clientRequestId: "verify-unbounded",
+            testProposalId: "P-017",
+            strategy: "seeded_monkey",
+            seed: 37,
+            maxSteps: 101,
+          },
+          { signal: controller.signal },
+        ),
+      ),
+    ).rejects.toBeInstanceOf(ToolInputError);
   });
 
   it("executes when a WebMCP host omits callback options", async () => {

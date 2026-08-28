@@ -7,7 +7,7 @@ import { ReleaseRoomRoot } from "./Root";
 describe("ReleaseRoomRoot", () => {
   beforeEach(() => localStorage.clear());
 
-  it("reports four available tools after WebMCP registration", async () => {
+  it("reports five available tools after WebMCP registration", async () => {
     const registry: ToolRegistry = {
       registerTool: vi.fn(async () => undefined),
     };
@@ -20,8 +20,8 @@ describe("ReleaseRoomRoot", () => {
     );
 
     expect(screen.getByText("WebMCP · registering tools")).toBeInTheDocument();
-    await screen.findByText("WebMCP · 4 tools available");
-    expect(registry.registerTool).toHaveBeenCalledTimes(4);
+    await screen.findByText("WebMCP · 5 tools available");
+    expect(registry.registerTool).toHaveBeenCalledTimes(5);
   });
 
   it("keeps the full UI available without WebMCP", async () => {
@@ -64,12 +64,13 @@ describe("ReleaseRoomRoot", () => {
       </StrictMode>,
     );
 
-    await screen.findByText("WebMCP · 4 tools available");
+    await screen.findByText("WebMCP · 5 tools available");
     expect([...registered].sort()).toEqual([
       "get_release_snapshot",
       "propose_release_decision",
       "propose_test_case",
       "query_network_evidence",
+      "run_approved_verification",
     ]);
   });
 });

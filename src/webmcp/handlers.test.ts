@@ -1,4 +1,5 @@
 import { createReleaseRoomStore } from "../domain/store";
+import { reviewTestProposal } from "../domain/workflow";
 import { createReleaseEvidenceHandlers } from "./handlers";
 
 const signal = new AbortController().signal;
@@ -123,6 +124,8 @@ describe("WebMCP handlers", () => {
         recommendation: "hold",
         rationale: "The state used by the agent is stale.",
         evidenceIds: ["netev_retry_017"],
+        testProposalId: "P-stale",
+        verificationResultId: "V-stale",
       },
       signal,
     );
@@ -134,5 +137,65 @@ describe("WebMCP handlers", () => {
       message: "Expected state version 11, but current version is 12.",
     });
     expect(store.getState()).toMatchObject({ stateVersion: 12, proposals: [] });
+  });
+
+  it("stores a public verification result and returns it in later snapshots", () => {
+    const store = createReleaseRoomStore(localStorage);
+    const handlers = createReleaseEvidenceHandlers(store);
+    handlers.proposeTestCase(
+      {
+        expectedStateVersion: 12,
+        clientRequestId: "req-handler-verification-test",
+        title: "Retry safely",
+        given: "The first accepted response is lost.",
+        when: "The same intent is retried.",
+        then: "The original key and operation are reused.",
+        evidenceIds: ["netev_retry_017", "netev_response_016"],
+      },
+      signal,
+    );
+    const approved = reviewTestProposal(store.getState(), "P-017", "approve");
+    expect(approved.ok).toBe(true);
+    if (!approved.ok) return;
+    store.setState(approved.state);
+
+    const result = handlers.runApprovedVerification(
+      {
+        expectedStateVersion: 14,
+        clientRequestId: "verify-handler-targeted-001",
+        testProposalId: "P-017",
+        strategy: "targeted_retry",
+      },
+      signal,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      replayed: false,
+      stateVersion: 15,
+      verification: {
+        verificationResultId: "V-001",
+        strategy: "targeted_retry",
+        verdict: "risk_confirmed",
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("requestFingerprint");
+
+    const snapshot = handlers.getReleaseSnapshot(signal);
+    expect(snapshot).toMatchObject({
+      stateVersion: 15,
+      verificationCounts: {
+        riskConfirmed: 1,
+        notReproduced: 0,
+        inconclusive: 0,
+      },
+      verifications: [
+        {
+          verificationResultId: "V-001",
+          testProposalId: "P-017",
+          verdict: "risk_confirmed",
+        },
+      ],
+    });
   });
 });
