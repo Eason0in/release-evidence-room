@@ -21,6 +21,11 @@ function proposalCounts(proposals: readonly Proposal[]) {
   };
 }
 
+function publicProposal(proposal: Proposal) {
+  const { requestFingerprint: _requestFingerprint, ...publicValue } = proposal;
+  return publicValue;
+}
+
 function publicWorkflowResult(result: WorkflowResult<Proposal>) {
   if (!result.ok) return result;
   const { requestFingerprint: _requestFingerprint, ...proposal } = result.value;
@@ -41,6 +46,7 @@ export function createReleaseEvidenceHandlers(
       const snapshot = {
         ...getReleaseSnapshot(state),
         proposalCounts: proposalCounts(state.proposals),
+        proposals: state.proposals.map(publicProposal),
       };
       store.setState(
         recordAgentRead(

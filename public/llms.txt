@@ -1,0 +1,18 @@
+# Release Evidence Room
+
+> A synthetic, privacy-safe WebMCP release review where agents build an evidence case and humans approve tests and make the final release decision.
+
+## Public resources
+
+- [Live application](https://release-evidence-room.vercel.app/): Open the no-login interactive evidence room.
+- [Source repository](https://github.com/Eason0in/release-evidence-room): Review the TypeScript source, WebMCP tool schemas, tests, and MIT license.
+- [Project documentation](https://github.com/Eason0in/release-evidence-room#readme): Read the human-agent boundary, local setup, verification layers, and privacy scope.
+
+## WebMCP capabilities
+
+- `get_release_snapshot`: Read release checks, gaps, proposals, decision, and state version.
+- `query_network_evidence`: Query only bounded, sanitized evidence already owned by the page.
+- `propose_test_case`: Draft an evidence-linked test for human review.
+- `propose_release_decision`: Draft a non-binding READY or HOLD recommendation.
+
+No tool can approve or execute a test, confirm a release decision, fetch arbitrary traffic, or deploy.

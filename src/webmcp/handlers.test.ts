@@ -26,6 +26,39 @@ describe("WebMCP handlers", () => {
     });
   });
 
+  it("returns proposal details needed for a later agent handoff", () => {
+    const store = createReleaseRoomStore(localStorage);
+    const handlers = createReleaseEvidenceHandlers(store);
+    handlers.proposeTestCase(
+      {
+        expectedStateVersion: 12,
+        clientRequestId: "req-handoff-test",
+        title: "Retry safely after an accepted response is lost",
+        given: "The first accepted response is lost.",
+        when: "The same payment intent is retried.",
+        then: "The original operation and stable key are reused.",
+        evidenceIds: ["netev_retry_017", "netev_response_016"],
+      },
+      signal,
+    );
+
+    const result = handlers.getReleaseSnapshot(signal);
+
+    expect(result).toMatchObject({
+      stateVersion: 13,
+      proposals: [
+        {
+          proposalId: "P-017",
+          kind: "test_case",
+          status: "pending",
+          title: "Retry safely after an accepted response is lost",
+          evidenceIds: ["netev_retry_017", "netev_response_016"],
+        },
+      ],
+    });
+    expect(JSON.stringify(result)).not.toContain("requestFingerprint");
+  });
+
   it("focuses matching evidence while keeping the query read-only", () => {
     const store = createReleaseRoomStore(localStorage);
     const handlers = createReleaseEvidenceHandlers(store);
