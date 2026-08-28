@@ -27,7 +27,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "demo:record": "DEMO_RECORDING=1 playwright test --config=playwright.demo.config.ts"
+    "demo:record": "DEMO_RECORDING=1 playwright test --config=playwright.demo.config.ts",
+    "demo:tts:inworld": "node scripts/generate-inworld-tts.mjs"
   },
   "dependencies": {
     "react": "19.2.8",

@@ -60,6 +60,7 @@ describe("Release Evidence Room", () => {
       screen.getByText(/two accepted operation refs were observed for one intent/i),
     ).toBeInTheDocument();
     expect(screen.getByText("FOCUSED EVIDENCE INTERPRETATION")).toBeInTheDocument();
+    expect(screen.getByText("WebMCP · query_network_evidence")).toBeInTheDocument();
   });
 
   it("announces an agent proposal to assistive technology", () => {

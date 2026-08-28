@@ -176,4 +176,15 @@ describe("WebMCP tools", () => {
       controller.signal,
     );
   });
+
+  it("executes when a WebMCP host omits callback options", async () => {
+    const handlers = createHandlers();
+    const tool = createReleaseEvidenceTools(handlers)[0];
+
+    await Reflect.apply(tool.execute, undefined, [{}]);
+
+    expect(handlers.getReleaseSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ aborted: false }),
+    );
+  });
 });

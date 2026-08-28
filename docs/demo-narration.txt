@@ -1,11 +1,11 @@
-Eighteen out of eighteen tests passed. Would you ship this payment retry build?
+This is Release Evidence Room, a WebMCP-powered release review room. It answers a practical question: can an agent find a release risk that a green test dashboard misses, while a human keeps accountability?
 
-Release Evidence Room gives a release owner and an agent one shared, bounded evidence space. The agent reads the current release snapshot and queries only privacy-safe evidence already owned by this page. It never fetches an arbitrary URL or sees raw traffic.
+This synthetic mobile checkout candidate shows eighteen of eighteen tests passing. The prompt asks the agent to review payment-retry safety using only evidence owned by this page.
 
-One payment intent produced two accepted operation references with different idempotency key references. That establishes a release risk, not proof of a duplicate charge.
+The agent calls get_release_snapshot to read the release and its coverage gaps, then query_network_evidence to filter the redacted retry records. One payment intent has two accepted operation references and two idempotency-key references. That is a bounded release risk, not proof of a duplicate charge.
 
-The agent proposes the missing response-loss regression test. It cannot approve or execute it. I approve the proposal as the human release owner, and the page records that the test is required but has not run.
+Next, propose_test_case drafts a response-loss regression test linked to the evidence. The proposal appears as pending. WebMCP cannot approve or execute it; I approve it as the human release owner.
 
-The agent reads the new state and recommends HOLD. The release remains undecided until I confirm it.
+The agent reads the updated state and calls propose_release_decision. It recommends HOLD because exactly-once behavior is still unproven. The header remains UNDECIDED until I click Confirm HOLD.
 
-Every read, proposal, and human action is attributed and versioned. There are no credentials, uploads, live company systems, autonomous approvals, or deployment tool. The agent builds the evidence case. The human makes the release decision.
+Under the hood, all four tools use strict schemas and runtime validation. State versions reject stale proposals, request IDs make retries idempotent, and every read, proposal, and human action is versioned in the local audit trail. There is no credential, live company system, arbitrary traffic fetch, test execution, approval, or deploy tool. The agent builds the evidence case. The human makes the release decision.

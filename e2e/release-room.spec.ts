@@ -5,7 +5,7 @@ const demoRecording = process.env.DEMO_RECORDING === "1";
 type BrowserTool = {
   execute(
     input: Record<string, unknown>,
-    options: { signal: AbortSignal },
+    options?: { signal: AbortSignal },
   ): Promise<unknown> | unknown;
 };
 
@@ -35,7 +35,15 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("WebMCP · 4 tools available")).toBeVisible();
   await expect(page.getByText("18 / 18")).toBeVisible();
+  await addDemoWatermark(page);
   await demoPause(page, 5_000);
+  await demoOverlay(
+    page,
+    "SIMULATED USER PROMPT",
+    "Review this release candidate for payment-retry safety.",
+    "Use only evidence available in this page. Propose one missing test, but do not approve it for me.",
+    6_000,
+  );
 
   const toolNames = await page.evaluate(() =>
     Object.keys(
@@ -53,8 +61,14 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   );
   expect(toolNames.some((name) => name.includes("deploy"))).toBe(false);
 
+  await demoToolCall(page, "get_release_snapshot", "Read state v12 and its coverage gaps.");
   await invokeTool(page, "get_release_snapshot", {});
   await demoPause(page, 3_000);
+  await demoToolCall(
+    page,
+    "query_network_evidence",
+    "Filter page-owned duplicate-side-effect evidence only.",
+  );
   await invokeTool(page, "query_network_evidence", {
     riskType: "duplicate_side_effect",
     severity: "high",
@@ -67,6 +81,11 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   await demoFocus(page, ".evidence-panel");
   await demoPause(page, 7_000);
 
+  await demoToolCall(
+    page,
+    "propose_test_case",
+    "Create a pending evidence-linked test proposal.",
+  );
   await invokeTool(page, "propose_test_case", {
     expectedStateVersion: 12,
     clientRequestId: "req-e2e-test-01",
@@ -83,8 +102,14 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   await expect(page.getByText("APPROVED BY HUMAN", { exact: true })).toBeVisible();
   await demoPause(page, 6_000);
 
+  await demoToolCall(page, "get_release_snapshot", "Read the human-approved test at state v14.");
   await invokeTool(page, "get_release_snapshot", {});
   await demoPause(page, 2_000);
+  await demoToolCall(
+    page,
+    "propose_release_decision",
+    "Recommend HOLD without changing the human decision.",
+  );
   await invokeTool(page, "propose_release_decision", {
     expectedStateVersion: 14,
     clientRequestId: "req-e2e-decision-01",
@@ -135,6 +160,101 @@ async function demoFocus(
   if (demoRecording) await page.locator(selector).scrollIntoViewIfNeeded();
 }
 
+async function demoToolCall(
+  page: import("@playwright/test").Page,
+  name: string,
+  summary: string,
+): Promise<void> {
+  await demoOverlay(page, "INTEGRATION CALLBACK", name, summary, 2_200);
+}
+
+async function addDemoWatermark(
+  page: import("@playwright/test").Page,
+): Promise<void> {
+  if (!demoRecording) return;
+  await page.evaluate(() => {
+    const watermark = document.createElement("div");
+    watermark.id = "demo-watermark";
+    watermark.textContent = "SIMULATED INTEGRATION TEST · NOT NATIVE EVIDENCE";
+    Object.assign(watermark.style, {
+      position: "fixed",
+      zIndex: "9998",
+      right: "22px",
+      bottom: "22px",
+      padding: "9px 12px",
+      color: "#ffbd59",
+      background: "rgba(9, 13, 18, .94)",
+      border: "1px solid #ffbd59",
+      font: "700 10px ui-monospace, monospace",
+      letterSpacing: ".08em",
+    });
+    document.body.append(watermark);
+  });
+}
+
+async function demoOverlay(
+  page: import("@playwright/test").Page,
+  eyebrow: string,
+  title: string,
+  copy: string,
+  milliseconds: number,
+): Promise<void> {
+  if (!demoRecording) return;
+  await page.evaluate(
+    ({ overlayEyebrow, overlayTitle, overlayCopy }) => {
+      document.getElementById("demo-overlay")?.remove();
+      const overlay = document.createElement("aside");
+      overlay.id = "demo-overlay";
+      overlay.setAttribute("aria-label", `${overlayEyebrow}: ${overlayTitle}`);
+      Object.assign(overlay.style, {
+        position: "fixed",
+        zIndex: "9999",
+        top: "22px",
+        right: "22px",
+        width: "min(520px, calc(100vw - 44px))",
+        padding: "18px 20px",
+        color: "#eaf1f6",
+        background: "rgba(9, 13, 18, .96)",
+        border: "1px solid #6fc9ec",
+        boxShadow: "0 18px 50px rgba(0, 0, 0, .45)",
+        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+      });
+      const label = document.createElement("p");
+      label.textContent = overlayEyebrow;
+      Object.assign(label.style, {
+        margin: "0 0 8px",
+        color: "#6fc9ec",
+        font: "700 11px ui-monospace, monospace",
+        letterSpacing: ".14em",
+      });
+      const heading = document.createElement("strong");
+      heading.textContent = overlayTitle;
+      Object.assign(heading.style, {
+        display: "block",
+        font: "800 20px ui-monospace, monospace",
+        overflowWrap: "anywhere",
+      });
+      const detail = document.createElement("p");
+      detail.textContent = overlayCopy;
+      Object.assign(detail.style, {
+        margin: "10px 0 0",
+        color: "#b8c4cd",
+        fontSize: "14px",
+        lineHeight: "1.45",
+      });
+      overlay.append(label, heading, detail);
+      document.body.append(overlay);
+    },
+    {
+      overlayEyebrow: eyebrow,
+      overlayTitle: title,
+      overlayCopy: copy,
+    },
+  );
+  await page.waitForTimeout(milliseconds);
+  await page.evaluate(() => document.getElementById("demo-overlay")?.remove());
+}
+
 async function invokeTool(
   page: import("@playwright/test").Page,
   name: string,
@@ -147,9 +267,7 @@ async function invokeTool(
           __releaseEvidenceTools: Record<string, BrowserTool>;
         }
       ).__releaseEvidenceTools;
-      return tools[toolName].execute(toolInput, {
-        signal: new AbortController().signal,
-      });
+      return tools[toolName].execute(toolInput);
     },
     { toolName: name, toolInput: input },
   );

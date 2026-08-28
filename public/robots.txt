@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://release-evidence-room.vercel.app/sitemap.xml
