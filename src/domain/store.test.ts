@@ -1,4 +1,12 @@
-import { createDemoReleaseState } from "./evidence";
+import {
+  createDemoReleaseState,
+  createReleaseStateFromCheckoutSession,
+} from "./evidence";
+import {
+  createCheckoutSession,
+  retryPayment,
+  submitPaymentWithLostResponse,
+} from "../checkout/sandbox";
 import { createReleaseRoomStore, RELEASE_ROOM_STORAGE_KEY } from "./store";
 import {
   proposeReleaseDecision,
@@ -23,6 +31,7 @@ describe("release room store", () => {
   it("starts from the deterministic demo state", () => {
     const store = createReleaseRoomStore(localStorage);
 
+    expect(RELEASE_ROOM_STORAGE_KEY).toBe("release-evidence-room/v3");
     expect(store.getState()).toEqual(createDemoReleaseState());
   });
 
@@ -38,6 +47,40 @@ describe("release room store", () => {
     expect(reloadedStore.getState()).toEqual(proposed.state);
   });
 
+  it("migrates a valid v2 review without losing its audit trail", () => {
+    const proposed = proposeTestCase(createDemoReleaseState(), proposalInput);
+    expect(proposed.ok).toBe(true);
+    if (!proposed.ok) return;
+    const legacyState = JSON.parse(JSON.stringify(proposed.state));
+    delete legacyState.evidenceSession;
+    localStorage.setItem(
+      "release-evidence-room/v2",
+      JSON.stringify({
+        schemaVersion: "release-evidence-room/v2",
+        state: legacyState,
+      }),
+    );
+
+    const migrated = createReleaseRoomStore(localStorage).getState();
+
+    expect(migrated).toMatchObject({
+      stateVersion: 13,
+      evidenceSession: {
+        provenance: "fixture",
+        retryMode: "new_key",
+      },
+      proposals: [{ clientRequestId: "req-store-test" }],
+      activity: [{ action: "proposed_test_case" }],
+    });
+    expect(JSON.parse(localStorage.getItem(RELEASE_ROOM_STORAGE_KEY)!)).toMatchObject({
+      schemaVersion: "release-evidence-room/v3",
+      state: {
+        stateVersion: 13,
+        proposals: [{ clientRequestId: "req-store-test" }],
+      },
+    });
+  });
+
   it("fails closed to a clean demo when saved state is malformed", () => {
     localStorage.setItem(
       RELEASE_ROOM_STORAGE_KEY,
@@ -51,7 +94,7 @@ describe("release room store", () => {
 
     expect(store.getState()).toEqual(createDemoReleaseState());
     expect(JSON.parse(localStorage.getItem(RELEASE_ROOM_STORAGE_KEY)!)).toMatchObject({
-      schemaVersion: "release-evidence-room/v2",
+      schemaVersion: "release-evidence-room/v3",
       state: { releaseId: "rel_demo_1042", stateVersion: 12 },
     });
   });
@@ -82,12 +125,20 @@ describe("release room store", () => {
       ...state,
       humanDecision: "ready",
     })],
+    ["checkout evidence source", (state: ReturnType<typeof createDemoReleaseState>) => ({
+      ...state,
+      evidenceSession: { ...state.evidenceSession, sourcePath: "/untrusted" },
+    })],
+    ["checkout retry mode that contradicts its trace", (state: ReturnType<typeof createDemoReleaseState>) => ({
+      ...state,
+      evidenceSession: { ...state.evidenceSession, retryMode: "reuse_key" },
+    })],
   ])("fails closed when persisted %s is invalid", (_label, mutate) => {
     const fixture = createDemoReleaseState();
     localStorage.setItem(
       RELEASE_ROOM_STORAGE_KEY,
       JSON.stringify({
-        schemaVersion: "release-evidence-room/v2",
+        schemaVersion: "release-evidence-room/v3",
         state: mutate(fixture),
       }),
     );
@@ -112,6 +163,74 @@ describe("release room store", () => {
 
     expect(listener).toHaveBeenCalledTimes(2);
     expect(store.getState().stateVersion).toBe(13);
+  });
+
+  it("adopts newer release evidence written by another browser tab", () => {
+    const store = createReleaseRoomStore(localStorage);
+    const listener = vi.fn();
+    const unsubscribe = store.subscribe(listener);
+    const runtimeState = createReleaseStateFromCheckoutSession(
+      retryPayment(
+        submitPaymentWithLostResponse(createCheckoutSession()),
+        "reuse_key",
+      ),
+    );
+    localStorage.setItem(
+      RELEASE_ROOM_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: "release-evidence-room/v3",
+        state: runtimeState,
+      }),
+    );
+
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: RELEASE_ROOM_STORAGE_KEY,
+        newValue: localStorage.getItem(RELEASE_ROOM_STORAGE_KEY),
+        storageArea: localStorage,
+      }),
+    );
+
+    expect(store.getState()).toEqual(runtimeState);
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it("fails closed when a safe retry trace is paired with a forged high risk", () => {
+    const safeState = createReleaseStateFromCheckoutSession(
+      retryPayment(
+        submitPaymentWithLostResponse(createCheckoutSession()),
+        "reuse_key",
+      ),
+    );
+    const tamperedState = {
+      ...safeState,
+      risks: [
+        ...safeState.risks,
+        {
+          riskId: "risk_forged_high",
+          evidenceId: "netev_retry_017",
+          severity: "high",
+          riskType: "duplicate_side_effect",
+          summary: "Forged contradiction.",
+          state: "unresolved",
+        },
+      ],
+      networkEvidence: safeState.networkEvidence.map((item) =>
+        item.phase === "retry_attempt" ? { ...item, severity: "high" } : item,
+      ),
+    };
+    localStorage.setItem(
+      RELEASE_ROOM_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: "release-evidence-room/v3",
+        state: tamperedState,
+      }),
+    );
+
+    expect(createReleaseRoomStore(localStorage).getState()).toEqual(
+      createDemoReleaseState(),
+    );
   });
 
   it("persists only consistent verification results", () => {
@@ -188,7 +307,7 @@ describe("release room store", () => {
       localStorage.setItem(
         RELEASE_ROOM_STORAGE_KEY,
         JSON.stringify({
-          schemaVersion: "release-evidence-room/v2",
+          schemaVersion: "release-evidence-room/v3",
           state: tamperedState,
         }),
       );
@@ -237,7 +356,7 @@ describe("release room store", () => {
     localStorage.setItem(
       RELEASE_ROOM_STORAGE_KEY,
       JSON.stringify({
-        schemaVersion: "release-evidence-room/v2",
+        schemaVersion: "release-evidence-room/v3",
         state: tamperedState,
       }),
     );

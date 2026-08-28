@@ -6,7 +6,8 @@ import {
   fingerprintVerification,
 } from "./workflow";
 
-export const RELEASE_ROOM_STORAGE_KEY = "release-evidence-room/v2";
+export const RELEASE_ROOM_STORAGE_KEY = "release-evidence-room/v3";
+const LEGACY_RELEASE_ROOM_STORAGE_KEY = "release-evidence-room/v2";
 
 export interface ReleaseRoomStore {
   getState(): ReleaseState;
@@ -16,7 +17,7 @@ export interface ReleaseRoomStore {
 }
 
 interface StoredReleaseRoom {
-  readonly schemaVersion: "release-evidence-room/v2";
+  readonly schemaVersion: "release-evidence-room/v3";
   readonly state: ReleaseState;
 }
 
@@ -111,12 +112,82 @@ function isVerificationResult(value: unknown): boolean {
 
 function isConsistentState(state: ReleaseState): boolean {
   const evidenceIds = new Set(state.networkEvidence.map((item) => item.evidenceId));
+  if (
+    evidenceIds.size !== state.networkEvidence.length ||
+    state.networkEvidence.length !== 2
+  ) {
+    return false;
+  }
   if (state.risks.some((risk) => !evidenceIds.has(risk.evidenceId))) return false;
   if (state.focusedEvidenceIds.some((evidenceId) => !evidenceIds.has(evidenceId))) {
     return false;
   }
   if (state.proposals.some((proposal) =>
     proposal.evidenceIds.some((evidenceId) => !evidenceIds.has(evidenceId)))) {
+    return false;
+  }
+
+  const initialAttempt = state.networkEvidence.find(
+    (item) => item.phase === "initial_attempt",
+  );
+  const retryAttempt = state.networkEvidence.find(
+    (item) => item.phase === "retry_attempt",
+  );
+  const initialKey = initialAttempt?.idempotencyKeyRefs[0];
+  const retryKey = retryAttempt?.idempotencyKeyRefs.at(-1);
+  const initialOperation = initialAttempt?.operationRefs[0];
+  const retryOperation = retryAttempt?.operationRefs.at(-1);
+  if (!initialKey || !retryKey || !initialOperation || !retryOperation) return false;
+  const reusesKey = initialKey === retryKey;
+  const reusesOperation = initialOperation === retryOperation;
+  if (
+    (state.evidenceSession.retryMode === "reuse_key" &&
+      (!reusesKey || !reusesOperation)) ||
+    (state.evidenceSession.retryMode === "new_key" &&
+      (reusesKey || reusesOperation))
+  ) {
+    return false;
+  }
+
+  const duplicateObserved = !reusesOperation;
+  if (
+    initialAttempt?.evidenceId !== "netev_response_016" ||
+    initialAttempt.riskType !== "response_loss" ||
+    initialAttempt.severity !== "medium" ||
+    initialAttempt.operationRefs.length !== 1 ||
+    initialAttempt.idempotencyKeyRefs.length !== 1 ||
+    retryAttempt?.evidenceId !== "netev_retry_017" ||
+    retryAttempt.riskType !== "duplicate_side_effect" ||
+    retryAttempt.severity !== (duplicateObserved ? "high" : "low") ||
+    retryAttempt.operationRefs.length !== 2 ||
+    retryAttempt.idempotencyKeyRefs.length !== 2 ||
+    retryAttempt.operationRefs[0] !== initialOperation ||
+    retryAttempt.idempotencyKeyRefs[0] !== initialKey ||
+    retryAttempt.intentRef !== initialAttempt.intentRef ||
+    retryAttempt.routeRef !== initialAttempt.routeRef
+  ) {
+    return false;
+  }
+
+  const responseLossRisks = state.risks.filter(
+    (risk) => risk.riskType === "response_loss",
+  );
+  const duplicateRisks = state.risks.filter(
+    (risk) => risk.riskType === "duplicate_side_effect",
+  );
+  if (
+    responseLossRisks.length !== 1 ||
+    responseLossRisks[0].riskId !== "risk_response_loss_01" ||
+    responseLossRisks[0].evidenceId !== initialAttempt.evidenceId ||
+    responseLossRisks[0].severity !== "medium" ||
+    responseLossRisks[0].state !== "unresolved" ||
+    duplicateRisks.length !== (duplicateObserved ? 1 : 0) ||
+    (duplicateObserved &&
+      (duplicateRisks[0].riskId !== "risk_exactly_once_01" ||
+        duplicateRisks[0].evidenceId !== retryAttempt.evidenceId ||
+        duplicateRisks[0].severity !== "high" ||
+        duplicateRisks[0].state !== "unresolved"))
+  ) {
     return false;
   }
 
@@ -204,7 +275,10 @@ function isConsistentState(state: ReleaseState): boolean {
     if (linkedVerification?.testProposalId !== proposal.testProposalId) return false;
     if (
       proposal.recommendation === "ready" &&
-      linkedVerification.verdict !== "not_reproduced"
+      (linkedVerification.verdict !== "not_reproduced" ||
+        state.risks.some(
+          (risk) => risk.severity === "high" && risk.state === "unresolved",
+        ))
     ) {
       return false;
     }
@@ -246,7 +320,13 @@ function isConsistentState(state: ReleaseState): boolean {
 }
 
 function isReleaseState(value: unknown): value is ReleaseState {
-  if (!isRecord(value) || !isRecord(value.tests)) return false;
+  if (
+    !isRecord(value) ||
+    !isRecord(value.tests) ||
+    !isRecord(value.evidenceSession)
+  ) {
+    return false;
+  }
   if (
     value.releaseId !== "rel_demo_1042" ||
     typeof value.releaseName !== "string" ||
@@ -256,6 +336,15 @@ function isReleaseState(value: unknown): value is ReleaseState {
     !Number.isInteger(value.stateVersion) ||
     Number(value.stateVersion) < 0 ||
     !isOneOf(value.humanDecision, ["pending", "ready", "hold"])
+  ) {
+    return false;
+  }
+  if (
+    typeof value.evidenceSession.sessionId !== "string" ||
+    value.evidenceSession.sourcePath !== "/checkout" ||
+    value.evidenceSession.scenario !== "response_loss_retry" ||
+    !isOneOf(value.evidenceSession.retryMode, ["reuse_key", "new_key"]) ||
+    !isOneOf(value.evidenceSession.provenance, ["fixture", "checkout_runtime"])
   ) {
     return false;
   }
@@ -345,17 +434,44 @@ function isReleaseState(value: unknown): value is ReleaseState {
 
 function readState(storage: Storage): ReleaseState | undefined {
   const raw = storage.getItem(RELEASE_ROOM_STORAGE_KEY);
-  if (!raw) return undefined;
+  if (raw) {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (
+        !isRecord(parsed) ||
+        parsed.schemaVersion !== "release-evidence-room/v3" ||
+        !isReleaseState(parsed.state)
+      ) {
+        return undefined;
+      }
+      return parsed.state;
+    } catch {
+      return undefined;
+    }
+  }
+
+  const legacyRaw = storage.getItem(LEGACY_RELEASE_ROOM_STORAGE_KEY);
+  if (!legacyRaw) return undefined;
   try {
-    const parsed: unknown = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(legacyRaw);
     if (
       !isRecord(parsed) ||
       parsed.schemaVersion !== "release-evidence-room/v2" ||
-      !isReleaseState(parsed.state)
+      !isRecord(parsed.state)
     ) {
       return undefined;
     }
-    return parsed.state;
+    const migrated = {
+      ...parsed.state,
+      evidenceSession: {
+        sessionId: "checkout_session_017",
+        sourcePath: "/checkout",
+        scenario: "response_loss_retry",
+        retryMode: "new_key",
+        provenance: "fixture",
+      },
+    };
+    return isReleaseState(migrated) ? migrated : undefined;
   } catch {
     return undefined;
   }
@@ -363,7 +479,7 @@ function readState(storage: Storage): ReleaseState | undefined {
 
 function writeState(storage: Storage, state: ReleaseState): void {
   const stored: StoredReleaseRoom = {
-    schemaVersion: "release-evidence-room/v2",
+    schemaVersion: "release-evidence-room/v3",
     state,
   };
   storage.setItem(RELEASE_ROOM_STORAGE_KEY, JSON.stringify(stored));
@@ -372,12 +488,30 @@ function writeState(storage: Storage, state: ReleaseState): void {
 export function createReleaseRoomStore(storage: Storage): ReleaseRoomStore {
   let state = readState(storage) ?? createDemoReleaseState();
   const listeners = new Set<() => void>();
+  let listeningForStorageChanges = false;
   writeState(storage, state);
+
+  const notify = (): void => {
+    for (const listener of listeners) listener();
+  };
+
+  const onStorage = (event: StorageEvent): void => {
+    if (
+      event.key !== RELEASE_ROOM_STORAGE_KEY ||
+      (event.storageArea !== null && event.storageArea !== storage)
+    ) {
+      return;
+    }
+    const nextState = readState(storage);
+    if (!nextState) return;
+    state = nextState;
+    notify();
+  };
 
   const setState = (nextState: ReleaseState): void => {
     state = nextState;
     writeState(storage, state);
-    for (const listener of listeners) listener();
+    notify();
   };
 
   return {
@@ -385,7 +519,17 @@ export function createReleaseRoomStore(storage: Storage): ReleaseRoomStore {
     setState,
     subscribe(listener) {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      if (!listeningForStorageChanges && typeof window !== "undefined") {
+        window.addEventListener("storage", onStorage);
+        listeningForStorageChanges = true;
+      }
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0 && listeningForStorageChanges) {
+          window.removeEventListener("storage", onStorage);
+          listeningForStorageChanges = false;
+        }
+      };
     },
     reset() {
       setState(createDemoReleaseState());

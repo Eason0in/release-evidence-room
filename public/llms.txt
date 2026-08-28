@@ -12,7 +12,7 @@
 
 ## What it is
 
-Release Evidence Room is a one-page React and TypeScript application using WebMCP's imperative `document.modelContext.registerTool` API. It demonstrates a synthetic mobile-checkout release where 18 of 18 automated tests pass but bounded retry evidence leaves exactly-once behavior unproven. The evidence is a release risk, not proof of a duplicate charge.
+Release Evidence Room is a two-route React and TypeScript application using WebMCP's imperative `document.modelContext.registerTool` API. The `/checkout` route is a fictional QA target that generates a browser-local response-loss retry trace. After an explicit handoff, the release room at `/` loads that exact session and labels it `CHECKOUT RUNTIME`, while 18 of 18 automated tests still appear green. Opening `/` directly uses a separately labeled deterministic fixture. The evidence is a release risk, not proof of a duplicate charge.
 
 ## Five WebMCP tools
 
@@ -31,16 +31,16 @@ The agent reads evidence, drafts proposals, and may run a synthetic verification
 - Strict JSON schemas use `additionalProperties: false`; runtime parsers validate again.
 - Proposal and verification mutations require `expectedStateVersion` for optimistic concurrency and `clientRequestId` for idempotent retries.
 - Stale requests fail without mutation; repeated identical requests replay without duplicate proposals; a second final confirmation fails closed.
-- State is synthetic, localStorage-backed, versioned, and validated with a fail-closed reset.
+- Checkout and release state are synthetic, same-origin localStorage-backed, versioned, cross-checked, and validated with a fail-closed reset.
 - No credentials, customer/company/student data, raw host/path/query/header/body/cookie/address/timestamp/file path, analytics, uploads, or remote traffic fetching.
 
 ## Verification status
 
-- 69 automated tests pass locally.
+- 83 automated tests pass locally.
 - TypeScript/Vite build passes; npm audit reports zero high-severity vulnerabilities.
-- Playwright integration path passes and is explicitly a test double.
-- Production-native WebMCP discovery and the complete five-tool flow passed on 2026-08-28 in ChatGPT's in-app browser.
-- The native run verified both bounded strategies, human-only approval and final confirmation, idempotent replay, stale-state rejection, persistence reload, and zero console errors.
+- The Playwright `/checkout` → evidence handoff → five-tool → human-confirmed `HOLD` integration path passes and is explicitly a WebMCP host test double.
+- The earlier Release Room-only production build passed native five-tool acceptance on 2026-08-28 in ChatGPT's in-app browser.
+- The new `/checkout` handoff awaits canonical deployment and production-native recertification.
 - The public YouTube demo remains the final submission artifact.
 
 `risk_confirmed` means the bounded synthetic fixture reproduced the modeled failure. `not_reproduced` means only that one bounded run did not reproduce it; it is not proof that a live-system bug is absent.
