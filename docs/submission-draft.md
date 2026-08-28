@@ -50,7 +50,7 @@ Both the UI and tool handlers call the same pure domain transitions. A versioned
 6. Ask the agent to propose a release decision linked to `V-002`. Confirm that HOLD is only a proposal and the header remains UNDECIDED.
 7. Click **Confirm HOLD**, then inspect the activity trail for the attributed state sequence.
 
-The repository currently reports 69 automated tests. The production build, Playwright path, and dependency audit are re-run as release gates; native production discovery must be rechecked after the current branch is deployed.
+The repository currently reports 69 automated tests. The production build, Playwright path, and dependency audit pass as release gates. On 2026-08-28, ChatGPT's in-app browser discovered all five tools on the canonical production URL and completed the approval, targeted replay, seeded monkey, decision, persistence, idempotency, stale-state, and out-of-bounds-input checks with zero console errors.
 
 Use **Reset demo** before repeating the flow. No login or credentials are required.
 

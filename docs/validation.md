@@ -19,7 +19,7 @@ The deterministic video is a local integration artifact. Its explicit watermark 
 
 ## Native WebMCP acceptance gate
 
-**Status: pending a fresh production capture after the current branch is deployed.**
+**Status: passed on 2026-08-28 against `https://release-evidence-room.vercel.app/` in ChatGPT's in-app browser.**
 
 Native acceptance requires all of the following on `https://release-evidence-room.vercel.app/` in ChatGPT's in-app browser or Chrome 149+ with WebMCP enabled:
 
@@ -30,9 +30,26 @@ Native acceptance requires all of the following on `https://release-evidence-roo
 - A stale `expectedStateVersion` returns `state_conflict` and creates no mutation.
 - The agent cannot approve a test, execute arbitrary code or a live-system test, confirm `READY`/`HOLD`, or deploy.
 - Human controls and the versioned activity trail visibly reflect the native calls.
-- A second confirmation after a final decision fails closed.
+- After a final decision, the native UI exposes no second confirmation control. The direct second-confirmation domain transition is covered separately by automated tests.
 
-The current branch includes a compatibility fallback for hosts that omit the optional execute-callback options object. That behavior has automated coverage and was observed in a local native-capable browser session; it must still be rechecked on the production deployment.
+### Recorded production-native result
+
+| Check | Observed result |
+| --- | --- |
+| Discovery | Exactly five tools: `get_release_snapshot`, `query_network_evidence`, `propose_test_case`, `run_approved_verification`, `propose_release_decision` |
+| Initial snapshot | Build `207`, candidate `RC3`, state version `12`, `18 / 18` tests |
+| Approval gate | Pre-approval verification returned `invalid_test_proposal` at state version `13` |
+| Targeted replay | `V-001`, `risk_confirmed`, two steps, two different idempotency keys, two modeled side effects, state version `15` |
+| Seeded monkey | `V-002`, seed `37`, cap `20`, four executed steps, `risk_confirmed`, state version `16` |
+| Decision guard | A risk-linked `READY` returned `invalid_verification_result`; `HOLD` became `P-018`, linked to `V-001`, and stayed pending until human confirmation |
+| Final state | Human-confirmed `HOLD`, state version `18`, one approved test, one confirmed decision, two risk-confirmed verifications |
+| Persistence | Reload restored state version `18`, `HOLD`, proposal counts, and both verification verdicts |
+| Idempotency | Exact test-proposal, verification, and decision retries returned `replayed: true`, the original IDs, and no new state version |
+| Concurrency | A new proposal using stale state version `12` returned `state_conflict`; counts and state version stayed unchanged |
+| Bounds | `maxSteps: 101` was rejected; a verification run linked to a proposal containing only one side of the evidence pair returned `inconclusive` rather than inventing a verdict |
+| Browser health | Zero console errors after the complete flow and reload; no second `Confirm HOLD` control remained |
+
+Automated tests cover the compatibility fallback for hosts that omit the optional execute-callback options object. The deployed five-tool native flow succeeded in the current in-app browser, but the production session did not instrument callback arguments and therefore does not prove that the host exercised that fallback branch. The canonical production page served bundle `assets/index-dUdqh-KZ.js` during this acceptance session.
 
 ## Manual native test script
 
@@ -44,12 +61,12 @@ The current branch includes a compatibility fallback for hosts that omit the opt
 6. Before approval, try `run_approved_verification`; expect `invalid_test_proposal` and no mutation. Then click **Approve test**; expect state version `14`.
 7. Call `run_approved_verification` with `expectedStateVersion: 14`, `testProposalId: P-017`, and `strategy: targeted_retry`; expect `V-001`, `risk_confirmed`, two side effects, and state version `15`.
 8. Call it again with a new request ID, `expectedStateVersion: 15`, `strategy: seeded_monkey`, `seed: 37`, and `maxSteps: 20`; expect reproducible `V-002`, four executed steps, `risk_confirmed`, and state version `16`.
-9. Call `propose_release_decision` with `expectedStateVersion: 16`, `recommendation: hold`, `testProposalId: P-017`, and `verificationResultId: V-002`; expect pending `P-018` while the header remains `UNDECIDED`.
+9. First try `recommendation: ready` with a risk-confirmed result; expect `invalid_verification_result`. Then call `propose_release_decision` with `expectedStateVersion: 16`, `recommendation: hold`, `testProposalId: P-017`, and one matching verification result; expect pending `P-018` while the header remains `UNDECIDED`.
 10. Replay the exact same request; expect `replayed: true` and unchanged state version `17`.
 11. Send a stale proposal with `expectedStateVersion: 12`; expect `state_conflict` and unchanged proposal and verification counts.
 12. Click **Confirm HOLD**; expect `HOLD`, `Human confirmed`, and a final state version `18`.
 
-Record the browser/host, URL, discovered tool names, returned state versions, and a screen capture. Do not record credentials, private browser context, or company evidence.
+For a repeat acceptance run, record the browser/host, URL, discovered tool names, returned state versions, and a screen capture. Do not record credentials, private browser context, or company evidence.
 
 ## Not tested or intentionally out of scope
 
