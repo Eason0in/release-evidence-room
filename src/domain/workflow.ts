@@ -93,7 +93,33 @@ export function recordAgentRead(
   };
 }
 
-function fingerprintTestCase(input: TestCaseProposalInput): string {
+interface TestCaseFingerprintInput {
+  readonly title: string;
+  readonly given: string;
+  readonly when: string;
+  readonly then: string;
+  readonly evidenceIds: readonly string[];
+}
+
+interface ReleaseDecisionFingerprintInput {
+  readonly recommendation: "ready" | "hold";
+  readonly rationale: string;
+  readonly evidenceIds: readonly string[];
+  readonly testProposalId: string;
+  readonly verificationResultId: string;
+}
+
+type VerificationFingerprintInput = { readonly testProposalId: string } &
+  (
+    | { readonly strategy: "targeted_retry" }
+    | {
+        readonly strategy: "seeded_monkey";
+        readonly seed: number;
+        readonly maxSteps: number;
+      }
+  );
+
+export function fingerprintTestCase(input: TestCaseFingerprintInput): string {
   return JSON.stringify({
     kind: "test_case",
     title: input.title,
@@ -104,7 +130,9 @@ function fingerprintTestCase(input: TestCaseProposalInput): string {
   });
 }
 
-function fingerprintReleaseDecision(input: ReleaseDecisionProposalInput): string {
+export function fingerprintReleaseDecision(
+  input: ReleaseDecisionFingerprintInput,
+): string {
   return JSON.stringify({
     kind: "release_decision",
     recommendation: input.recommendation,
@@ -115,7 +143,9 @@ function fingerprintReleaseDecision(input: ReleaseDecisionProposalInput): string
   });
 }
 
-function fingerprintVerification(input: ApprovedVerificationInput): string {
+export function fingerprintVerification(
+  input: VerificationFingerprintInput,
+): string {
   return JSON.stringify({
     kind: "verification",
     testProposalId: input.testProposalId,

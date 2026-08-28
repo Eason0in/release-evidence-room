@@ -1,5 +1,10 @@
 import { createDemoReleaseState, type ReleaseState } from "./evidence";
 import { runSyntheticVerification } from "./verification";
+import {
+  fingerprintReleaseDecision,
+  fingerprintTestCase,
+  fingerprintVerification,
+} from "./workflow";
 
 export const RELEASE_ROOM_STORAGE_KEY = "release-evidence-room/v2";
 
@@ -131,6 +136,14 @@ function isConsistentState(state: ReleaseState): boolean {
     return false;
   }
 
+  for (const proposal of state.proposals) {
+    const expectedFingerprint =
+      proposal.kind === "test_case"
+        ? fingerprintTestCase(proposal)
+        : fingerprintReleaseDecision(proposal);
+    if (proposal.requestFingerprint !== expectedFingerprint) return false;
+  }
+
   for (const verification of state.verifications) {
     const linkedTest = state.proposals.find(
       (proposal) => proposal.proposalId === verification.testProposalId,
@@ -138,6 +151,19 @@ function isConsistentState(state: ReleaseState): boolean {
     if (linkedTest?.kind !== "test_case" || linkedTest.status !== "approved") {
       return false;
     }
+    const expectedFingerprint =
+      verification.strategy === "targeted_retry"
+        ? fingerprintVerification({
+            testProposalId: verification.testProposalId,
+            strategy: verification.strategy,
+          })
+        : fingerprintVerification({
+            testProposalId: verification.testProposalId,
+            strategy: verification.strategy,
+            seed: verification.seed!,
+            maxSteps: verification.maxSteps!,
+          });
+    if (verification.requestFingerprint !== expectedFingerprint) return false;
     const expectedOutcome =
       verification.strategy === "targeted_retry"
         ? runSyntheticVerification(state, {

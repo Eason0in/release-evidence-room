@@ -145,6 +145,60 @@ describe("release room store", () => {
     );
   });
 
+  it("fails closed when a persisted request fingerprint does not match its content", () => {
+    const proposed = proposeTestCase(createDemoReleaseState(), proposalInput);
+    expect(proposed.ok).toBe(true);
+    if (!proposed.ok) return;
+    const approved = reviewTestProposal(proposed.state, "P-017", "approve");
+    expect(approved.ok).toBe(true);
+    if (!approved.ok) return;
+    const verified = runApprovedVerification(approved.state, {
+      expectedStateVersion: 14,
+      clientRequestId: "verify-store-fingerprint",
+      testProposalId: "P-017",
+      strategy: "targeted_retry",
+    });
+    expect(verified.ok).toBe(true);
+    if (!verified.ok) return;
+    const held = proposeReleaseDecision(verified.state, {
+      expectedStateVersion: 15,
+      clientRequestId: "decision-store-fingerprint",
+      recommendation: "hold",
+      rationale: "The bounded verifier confirmed the modeled risk.",
+      evidenceIds: ["netev_retry_017", "netev_response_016"],
+      testProposalId: "P-017",
+      verificationResultId: "V-001",
+    });
+    expect(held.ok).toBe(true);
+    if (!held.ok) return;
+
+    for (const target of ["test", "verification", "decision"] as const) {
+      const tamperedState = structuredClone(held.state);
+      const record =
+        target === "verification"
+          ? tamperedState.verifications[0]
+          : tamperedState.proposals.find((proposal) =>
+              target === "test"
+                ? proposal.kind === "test_case"
+                : proposal.kind === "release_decision",
+            );
+      expect(record).toBeDefined();
+      if (!record) return;
+      Object.assign(record, { requestFingerprint: "tampered" });
+      localStorage.setItem(
+        RELEASE_ROOM_STORAGE_KEY,
+        JSON.stringify({
+          schemaVersion: "release-evidence-room/v2",
+          state: tamperedState,
+        }),
+      );
+
+      expect(createReleaseRoomStore(localStorage).getState()).toEqual(
+        createDemoReleaseState(),
+      );
+    }
+  });
+
   it("fails closed when persisted READY has a forged not-reproduced verdict", () => {
     const proposed = proposeTestCase(createDemoReleaseState(), proposalInput);
     expect(proposed.ok).toBe(true);

@@ -36,7 +36,7 @@ The agent reads evidence, drafts proposals, and may run a synthetic verification
 
 ## Verification status
 
-- 66 automated tests pass locally.
+- 69 automated tests pass locally.
 - TypeScript/Vite build passes; npm audit reports zero high-severity vulnerabilities.
 - Playwright integration path passes and is explicitly a test double.
 - Production native WebMCP discovery and the public YouTube demo remain final submission gates.

@@ -2,6 +2,8 @@
 
 This is the English copy prepared for the Devpost form. Replace the pending video placeholder only after the native production recording is public on YouTube.
 
+Release Evidence Room is a new project created during the WebMCP Challenge submission period. Its public Git history documents the implementation timeline.
+
 - **Live URL:** https://release-evidence-room.vercel.app/
 - **Repository:** https://github.com/Eason0in/release-evidence-room
 - **Demo video:** `PENDING_PUBLIC_YOUTUBE_URL`
@@ -48,7 +50,7 @@ Both the UI and tool handlers call the same pure domain transitions. A versioned
 6. Ask the agent to propose a release decision linked to `V-002`. Confirm that HOLD is only a proposal and the header remains UNDECIDED.
 7. Click **Confirm HOLD**, then inspect the activity trail for the attributed state sequence.
 
-The repository currently reports 66 automated tests. The production build, Playwright path, and dependency audit are re-run as release gates; native production discovery must be rechecked after the current branch is deployed.
+The repository currently reports 69 automated tests. The production build, Playwright path, and dependency audit are re-run as release gates; native production discovery must be rechecked after the current branch is deployed.
 
 Use **Reset demo** before repeating the flow. No login or credentials are required.
 

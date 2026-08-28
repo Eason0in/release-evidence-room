@@ -2,7 +2,7 @@
 
 **A privacy-safe WebMCP release review room where an agent builds the evidence case and a human makes the release decision.**
 
-> **18 / 18 automated tests pass. Exactly-once retry behavior is still unproven.**
+> **Fixture state:** 18 / 18 release checks pass, while exactly-once retry behavior remains unproven. **Repository verification:** 69 automated tests pass.
 
 Release Evidence Room is a one-page React and TypeScript WebMCP demo for a realistic release-engineering problem: a green test suite can still hide a payment-retry risk. The agent can read bounded evidence, draft proposals, and—only after human approval—run the approved scenario inside a synthetic sandbox. Only the human can approve a test proposal or confirm the final `READY` / `HOLD` decision.
 
@@ -96,7 +96,7 @@ npm audit --audit-level=high
 
 Current local evidence:
 
-- 66 Vitest tests pass across domain, verifier, persistence, components, WebMCP handlers, and the Inworld helper.
+- 69 Vitest tests pass across domain, verifier, persistence, components, WebMCP handlers, and the Inworld helper.
 - TypeScript and the Vite production build pass.
 - The Playwright proposal-and-human-confirmation path passes.
 - The dependency audit reports zero high-severity vulnerabilities.

@@ -326,6 +326,89 @@ describe("proposal workflow", () => {
     });
   });
 
+  it("rejects READY when the linked verification confirms risk", () => {
+    const proposed = proposeTestCase(createDemoReleaseState(), testProposalInput);
+    expect(proposed.ok).toBe(true);
+    if (!proposed.ok) return;
+    const approved = reviewTestProposal(proposed.state, "P-017", "approve");
+    expect(approved.ok).toBe(true);
+    if (!approved.ok) return;
+    const verified = runApprovedVerification(approved.state, {
+      expectedStateVersion: 14,
+      clientRequestId: "verify-ready-risk",
+      testProposalId: "P-017",
+      strategy: "targeted_retry",
+    });
+    expect(verified.ok).toBe(true);
+    if (!verified.ok) return;
+
+    const result = proposeReleaseDecision(verified.state, {
+      expectedStateVersion: 15,
+      clientRequestId: "decision-ready-risk",
+      recommendation: "ready",
+      rationale: "The release is ready.",
+      evidenceIds: ["netev_retry_017", "netev_response_016"],
+      testProposalId: "P-017",
+      verificationResultId: "V-001",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "invalid_verification_result",
+      currentStateVersion: 15,
+    });
+  });
+
+  it("allows READY when the linked verification does not reproduce risk", () => {
+    const fixture = createDemoReleaseState();
+    const safeFixture = {
+      ...fixture,
+      networkEvidence: fixture.networkEvidence.map((item) =>
+        item.phase === "retry_attempt"
+          ? {
+              ...item,
+              operationRefs: ["op_01"],
+              idempotencyKeyRefs: ["idem_7f3c"],
+            }
+          : item,
+      ),
+    };
+    const proposed = proposeTestCase(safeFixture, testProposalInput);
+    expect(proposed.ok).toBe(true);
+    if (!proposed.ok) return;
+    const approved = reviewTestProposal(proposed.state, "P-017", "approve");
+    expect(approved.ok).toBe(true);
+    if (!approved.ok) return;
+    const verified = runApprovedVerification(approved.state, {
+      expectedStateVersion: 14,
+      clientRequestId: "verify-ready-safe",
+      testProposalId: "P-017",
+      strategy: "targeted_retry",
+    });
+    expect(verified).toMatchObject({
+      ok: true,
+      value: { verdict: "not_reproduced" },
+    });
+    if (!verified.ok) return;
+
+    const result = proposeReleaseDecision(verified.state, {
+      expectedStateVersion: 15,
+      clientRequestId: "decision-ready-safe",
+      recommendation: "ready",
+      rationale: "The bounded retry verification did not reproduce the risk.",
+      evidenceIds: ["netev_retry_017", "netev_response_016"],
+      testProposalId: "P-017",
+      verificationResultId: "V-001",
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      replayed: false,
+      state: { stateVersion: 16, humanDecision: "pending" },
+      value: { recommendation: "ready", status: "pending" },
+    });
+  });
+
   it("records a bounded seeded monkey verification", () => {
     const proposed = proposeTestCase(createDemoReleaseState(), testProposalInput);
     expect(proposed.ok).toBe(true);
