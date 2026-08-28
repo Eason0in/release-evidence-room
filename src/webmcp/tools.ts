@@ -363,6 +363,12 @@ function assertActive(signal: AbortSignal): void {
   if (signal.aborted) throw new DOMException("Tool execution aborted.", "AbortError");
 }
 
+function getExecutionSignal(
+  options: WebMCP.ToolExecuteCallbackOptions | undefined,
+): AbortSignal {
+  return options?.signal ?? new AbortController().signal;
+}
+
 export function createReleaseEvidenceTools(
   handlers: ReleaseEvidenceHandlers,
 ): WebMCP.ModelContextTool[] {
@@ -374,7 +380,8 @@ export function createReleaseEvidenceTools(
         "Read the active synthetic release, checks, evidence gaps, every proposal with its ID and status, human decision, and current state version. Use the returned stateVersion for the next proposal. Appends a local audit entry but makes no release change.",
       inputSchema: releaseToolSchemas.snapshot,
       annotations: { readOnlyHint: false, untrustedContentHint: true },
-      async execute(input, { signal }) {
+      async execute(input, options) {
+        const signal = getExecutionSignal(options);
         assertActive(signal);
         parseSnapshotInput(input);
         return handlers.getReleaseSnapshot(signal);
@@ -387,7 +394,8 @@ export function createReleaseEvidenceTools(
         "Filter only the bounded, redacted network evidence already present in this page. Updates local focus and audit state, but never fetches a URL, changes source evidence, or returns raw traffic.",
       inputSchema: releaseToolSchemas.networkQuery,
       annotations: { readOnlyHint: false, untrustedContentHint: true },
-      async execute(input, { signal }) {
+      async execute(input, options) {
+        const signal = getExecutionSignal(options);
         assertActive(signal);
         return handlers.queryNetworkEvidence(parseNetworkQuery(input), signal);
       },
@@ -399,7 +407,8 @@ export function createReleaseEvidenceTools(
         "Create an evidence-linked pending test proposal for human review. Does not approve or execute the test.",
       inputSchema: releaseToolSchemas.testCase,
       annotations: { readOnlyHint: false, untrustedContentHint: false },
-      async execute(input, { signal }) {
+      async execute(input, options) {
+        const signal = getExecutionSignal(options);
         assertActive(signal);
         return handlers.proposeTestCase(parseTestCase(input), signal);
       },
@@ -411,7 +420,8 @@ export function createReleaseEvidenceTools(
         "Create a non-binding READY or HOLD proposal grounded in room evidence. If testProposalId is supplied, it must identify an approved test proposal from the latest snapshot. Cannot confirm, deploy, or release.",
       inputSchema: releaseToolSchemas.releaseDecision,
       annotations: { readOnlyHint: false, untrustedContentHint: false },
-      async execute(input, { signal }) {
+      async execute(input, options) {
+        const signal = getExecutionSignal(options);
         assertActive(signal);
         return handlers.proposeReleaseDecision(parseReleaseDecision(input), signal);
       },

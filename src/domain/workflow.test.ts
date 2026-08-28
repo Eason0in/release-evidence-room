@@ -153,4 +153,55 @@ describe("proposal workflow", () => {
       });
     }
   });
+
+  it("rejects a second final release confirmation", () => {
+    const firstProposal = proposeReleaseDecision(createDemoReleaseState(), {
+      expectedStateVersion: 12,
+      clientRequestId: "req-first-decision",
+      recommendation: "hold",
+      rationale: "Retry safety remains unproven.",
+      evidenceIds: ["netev_retry_017"],
+    });
+    expect(firstProposal.ok).toBe(true);
+    if (!firstProposal.ok) return;
+
+    const secondProposal = proposeReleaseDecision(firstProposal.state, {
+      expectedStateVersion: 13,
+      clientRequestId: "req-second-decision",
+      recommendation: "ready",
+      rationale: "All automated checks passed.",
+      evidenceIds: ["netev_response_016"],
+    });
+    expect(secondProposal.ok).toBe(true);
+    if (!secondProposal.ok) return;
+
+    const firstConfirmation = reviewReleaseDecision(
+      secondProposal.state,
+      "P-017",
+      "confirm",
+    );
+    expect(firstConfirmation.ok).toBe(true);
+    if (!firstConfirmation.ok) return;
+
+    const secondConfirmation = reviewReleaseDecision(
+      firstConfirmation.state,
+      "P-018",
+      "confirm",
+    );
+
+    expect(secondConfirmation).toEqual({
+      ok: false,
+      code: "release_already_decided",
+      currentStateVersion: 15,
+      message: "The release decision is already final.",
+    });
+    expect(firstConfirmation.state).toMatchObject({
+      stateVersion: 15,
+      humanDecision: "hold",
+      proposals: [
+        { proposalId: "P-017", status: "confirmed" },
+        { proposalId: "P-018", status: "pending" },
+      ],
+    });
+  });
 });

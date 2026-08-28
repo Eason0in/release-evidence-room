@@ -177,6 +177,7 @@ td code { color: #c7d3dc; font: 11px ui-monospace, monospace; }
 .timeline-list li { display: grid; grid-template-columns: auto 1fr; gap: 9px 11px; padding: 14px; border: 1px solid var(--line); background: var(--surface-raised); }
 .timeline-list li > code { grid-column: 2; color: var(--muted); font: 10px ui-monospace, monospace; }
 .timeline-list strong { text-transform: uppercase; font: 700 10px ui-monospace, monospace; }
+.timeline-tool { display: block; margin-top: 4px; color: var(--blue); font: 700 9px ui-monospace, monospace; }
 .timeline-list p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .actor { align-self: start; padding: 4px 5px; font: 800 8px ui-monospace, monospace; text-transform: uppercase; }
 .actor-agent { color: var(--blue); background: #102b36; }

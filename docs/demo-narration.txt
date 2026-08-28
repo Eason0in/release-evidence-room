@@ -1,11 +1,9 @@
-Eighteen out of eighteen tests passed. Would you ship this payment retry build?
+Release Evidence Room uses four WebMCP tools to turn a green dashboard into an auditable human decision. Here, eighteen of eighteen tests pass. The prompt asks the agent to review payment-retry safety using only evidence owned by this page.
 
-Release Evidence Room gives a release owner and an agent one shared, bounded evidence space. The agent reads the current release snapshot and queries only privacy-safe evidence already owned by this page. It never fetches an arbitrary URL or sees raw traffic.
+First, get release snapshot returns state version twelve and the missing coverage. Query network evidence filters the bounded synthetic records. One payment intent has two accepted operation references and different idempotency key references. This is a release risk, not proof of a duplicate charge.
 
-One payment intent produced two accepted operation references with different idempotency key references. That establishes a release risk, not proof of a duplicate charge.
+Propose test case creates a pending response-loss regression test. WebMCP does not approve or execute it. I approve it as the human release owner.
 
-The agent proposes the missing response-loss regression test. It cannot approve or execute it. I approve the proposal as the human release owner, and the page records that the test is required but has not run.
+The agent reads state fourteen, then propose release decision recommends HOLD. The header remains undecided until I click Confirm HOLD.
 
-The agent reads the new state and recommends HOLD. The release remains undecided until I confirm it.
-
-Every read, proposal, and human action is attributed and versioned. There are no credentials, uploads, live company systems, autonomous approvals, or deployment tool. The agent builds the evidence case. The human makes the release decision.
+All four tools use strict schemas and runtime validation. Repeated request IDs are idempotent; stale versions fail without mutation. Every read, proposal, and human action is attributed and versioned. There are no credentials, live company systems, autonomous approvals, or deployment tool. The agent builds the evidence case. The human makes the release decision.
