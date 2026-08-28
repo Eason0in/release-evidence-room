@@ -43,6 +43,7 @@ export interface ActivityEntry {
     | "proposed_test_case"
     | "approved_test_case"
     | "rejected_test_case"
+    | "ran_approved_verification"
     | "proposed_release_decision"
     | "confirmed_release_ready"
     | "confirmed_release_hold"
@@ -51,6 +52,35 @@ export interface ActivityEntry {
   readonly fromVersion: number;
   readonly toVersion: number;
   readonly clientRequestId?: string;
+}
+
+export type VerificationStrategy = "targeted_retry" | "seeded_monkey";
+export type VerificationVerdict =
+  | "risk_confirmed"
+  | "not_reproduced"
+  | "inconclusive";
+
+export interface VerificationAssertion {
+  readonly name: "stable_retry_key" | "single_side_effect";
+  readonly passed: boolean;
+  readonly expected: string;
+  readonly observed: string;
+}
+
+export interface VerificationResult {
+  readonly verificationResultId: string;
+  readonly clientRequestId: string;
+  readonly requestFingerprint: string;
+  readonly testProposalId: string;
+  readonly strategy: VerificationStrategy;
+  readonly verdict: VerificationVerdict;
+  readonly observedSideEffects: number;
+  readonly executedSteps: number;
+  readonly assertions: readonly VerificationAssertion[];
+  readonly trace: readonly string[];
+  readonly summary: string;
+  readonly seed?: number;
+  readonly maxSteps?: number;
 }
 
 interface ProposalBase {
@@ -74,7 +104,8 @@ export interface ReleaseDecisionProposal extends ProposalBase {
   readonly status: "pending" | "confirmed" | "rejected";
   readonly recommendation: "ready" | "hold";
   readonly rationale: string;
-  readonly testProposalId?: string;
+  readonly testProposalId: string;
+  readonly verificationResultId: string;
 }
 
 export type Proposal = TestCaseProposal | ReleaseDecisionProposal;
@@ -91,6 +122,7 @@ export interface ReleaseState {
   readonly networkEvidence: readonly NetworkEvidence[];
   readonly focusedEvidenceIds: readonly string[];
   readonly proposals: readonly Proposal[];
+  readonly verifications: readonly VerificationResult[];
   readonly activity: readonly ActivityEntry[];
   readonly humanDecision: "pending" | "ready" | "hold";
 }
@@ -183,6 +215,7 @@ export function createDemoReleaseState(): ReleaseState {
     ],
     focusedEvidenceIds: [],
     proposals: [],
+    verifications: [],
     activity: [],
     humanDecision: "pending",
   };

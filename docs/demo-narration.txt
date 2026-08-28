@@ -4,8 +4,10 @@ This synthetic mobile checkout candidate shows eighteen of eighteen tests passin
 
 The agent calls get_release_snapshot to read the release and its coverage gaps, then query_network_evidence to filter the redacted retry records. One payment intent has two accepted operation references and two idempotency-key references. That is a bounded release risk, not proof of a duplicate charge.
 
-Next, propose_test_case drafts a response-loss regression test linked to the evidence. The proposal appears as pending. WebMCP cannot approve or execute it; I approve it as the human release owner.
+Next, propose_test_case drafts a response-loss regression test linked to the evidence. The proposal appears as pending. WebMCP cannot approve it; I approve the bounded verification as the human release owner.
 
-The agent reads the updated state and calls propose_release_decision. It recommends HOLD because exactly-once behavior is still unproven. The header remains UNDECIDED until I click Confirm HOLD.
+Only then can run_approved_verification execute. First, an exact retry replay uses the two sanitized attempts. Next, a seeded state-machine monkey run explores refresh, response loss, and retry with a strict step limit. Both reproduce two synthetic side effects. These results confirm the modeled risk, not a real duplicate charge.
 
-Under the hood, all four tools use strict schemas and runtime validation. State versions reject stale proposals, request IDs make retries idempotent, and every read, proposal, and human action is versioned in the local audit trail. There is no credential, live company system, arbitrary traffic fetch, test execution, approval, or deploy tool. The agent builds the evidence case. The human makes the release decision.
+The agent links that verification to propose_release_decision. It recommends HOLD, but the header remains UNDECIDED until I click Confirm HOLD.
+
+Under the hood, all five tools use strict schemas and runtime validation. State versions reject stale changes, request IDs make retries idempotent, and every read, proposal, verification, and human action is versioned in the local audit trail. There is no credential, live company system, arbitrary traffic fetch, arbitrary-code execution, approval, or deploy tool. The agent builds and tests the bounded evidence case. The human makes the release decision.

@@ -14,31 +14,34 @@
 
 Release Evidence Room is a one-page React and TypeScript application using WebMCP's imperative `document.modelContext.registerTool` API. It demonstrates a synthetic mobile-checkout release where 18 of 18 automated tests pass but bounded retry evidence leaves exactly-once behavior unproven. The evidence is a release risk, not proof of a duplicate charge.
 
-## Four WebMCP tools
+## Five WebMCP tools
 
 - `get_release_snapshot`: Read the synthetic release, test counts, coverage gaps, proposals, decision, and state version; append a local read audit event.
 - `query_network_evidence`: Filter only page-owned, redacted evidence by risk type, severity, and a maximum limit of 20; never fetch arbitrary URLs or raw traffic.
 - `propose_test_case`: Create a pending evidence-linked regression-test proposal; cannot approve or execute it.
-- `propose_release_decision`: Create a non-binding `READY` or `HOLD` proposal; cannot confirm, deploy, or release.
+- `run_approved_verification`: After human approval, execute either an exact retry replay or seeded, bounded state-machine monkey run in the page-owned synthetic sandbox; never call a live service or arbitrary code.
+- `propose_release_decision`: Create a non-binding, verification-linked `READY` or `HOLD` proposal; cannot confirm, deploy, or release.
 
 ## Human-agent boundary
 
-The agent reads evidence and drafts proposals. The human approves or rejects tests and confirms the final release decision. No tool can execute a test, approve a proposal, confirm a decision, deploy, fetch arbitrary traffic, or access live TestLink/Charles systems.
+The agent reads evidence, drafts proposals, and may run a synthetic verification only after the human approves its linked test. The human approves or rejects tests and confirms the final release decision. No tool can run arbitrary code or a live-system test, approve a proposal, confirm a decision, deploy, fetch arbitrary traffic, or access live TestLink/Charles systems.
 
 ## Reliability and privacy
 
 - Strict JSON schemas use `additionalProperties: false`; runtime parsers validate again.
-- Proposal mutations require `expectedStateVersion` for optimistic concurrency and `clientRequestId` for idempotent retries.
+- Proposal and verification mutations require `expectedStateVersion` for optimistic concurrency and `clientRequestId` for idempotent retries.
 - Stale requests fail without mutation; repeated identical requests replay without duplicate proposals; a second final confirmation fails closed.
 - State is synthetic, localStorage-backed, versioned, and validated with a fail-closed reset.
 - No credentials, customer/company/student data, raw host/path/query/header/body/cookie/address/timestamp/file path, analytics, uploads, or remote traffic fetching.
 
 ## Verification status
 
-- 45 automated tests pass locally.
+- 69 automated tests pass locally.
 - TypeScript/Vite build passes; npm audit reports zero high-severity vulnerabilities.
 - Playwright integration path passes and is explicitly a test double.
 - Production native WebMCP discovery and the public YouTube demo remain final submission gates.
+
+`risk_confirmed` means the bounded synthetic fixture reproduced the modeled failure. `not_reproduced` means only that one bounded run did not reproduce it; it is not proof that a live-system bug is absent.
 
 ## Documentation
 

@@ -19,25 +19,31 @@ Do not claim a duplicate charge without evidence.
 
 Show this prompt in the real agent interface before the native tool calls.
 
-## 14–31 seconds — Structured evidence
+## 14–28 seconds — Structured evidence
 
 The native agent calls `get_release_snapshot` and `query_network_evidence`. The page focuses `netev_retry_017`.
 
 > The agent queries page-owned evidence instead of scraping or guessing through the UI.
 
-## 31–41 seconds — Reveal the gap
+## 28–38 seconds — Reveal the gap
 
 Point to the two idempotency key refs and two accepted operation refs.
 
 > One payment intent created two accepted operations. That is a release risk, not proof of a duplicate charge.
 
-## 41–57 seconds — Test proposal handoff
+## 38–50 seconds — Test proposal handoff
 
 The agent calls `propose_test_case`. The proposal appears as pending. Click **Approve test**.
 
-> The agent can only propose. I approve the missing test; nothing has been executed.
+> The agent proposes the test. I decide whether its bounded verification may run.
 
-## 57–72 seconds — Decision proposal
+## 50–68 seconds — Two-stage verification
+
+The agent calls `run_approved_verification` twice: first with `targeted_retry`, then with `seeded_monkey`, seed `37`, and a `20`-step cap. Show `V-001`, `V-002`, both `RISK CONFIRMED`, and the monkey trace reaching the modeled retry in four steps.
+
+> The exact replay reproduces the two side effects. A seeded state-machine run reaches the same failure through refresh and response-loss transitions. Both are real executions of the synthetic model—not claims about a live payment service.
+
+## 68–78 seconds — Decision proposal
 
 Prompt:
 
@@ -45,19 +51,19 @@ Prompt:
 Read the current state and propose the release decision.
 ```
 
-The agent reads version 14 and calls `propose_release_decision`. The HOLD card appears while the release header remains UNDECIDED.
+The agent reads version 16 and calls `propose_release_decision` with `V-002`. The HOLD card appears while the release header remains UNDECIDED.
 
 > Even now, the agent has not changed the release decision.
 
-## 72–78 seconds — Human decision
+## 78–83 seconds — Human decision
 
 Click **Confirm HOLD**.
 
 > The release owner makes the call.
 
-## 78–90 seconds — Trust close
+## 83–90 seconds — Trust close
 
-Show the activity trail and its v12→v16 sequence.
+Show the activity trail and its v12→v18 sequence.
 
 > Every read, proposal, and human action is attributed and versioned. There are no credentials, uploads, live company systems, or deploy tool.
 
