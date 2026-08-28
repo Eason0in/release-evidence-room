@@ -43,7 +43,8 @@ GEO here means making the project easy for search engines and answer engines to 
 - Playwright proposal/human-confirmation path passes.
 - `npm audit --audit-level=high` reports zero vulnerabilities.
 - Deterministic recording passes but is explicitly a test double, not native WebMCP proof.
-- Production native discovery and the public YouTube URL remain final submission gates.
+- Production-native discovery and the complete five-tool flow passed on 2026-08-28 in ChatGPT's in-app browser; the public YouTube URL remains the final submission artifact.
+- The native run verified pre-approval rejection, both verification strategies, risk-linked `READY` rejection, human-confirmed `HOLD`, persistence reload, idempotent replay, stale-state rejection, and zero console errors.
 
 ## Claim boundaries
 
