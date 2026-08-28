@@ -84,7 +84,7 @@ export function App(_props: AppProps) {
             {state.candidate} · Build {state.build} · {state.releaseId}
           </p>
           <div className="badge-row">
-            <span className="badge badge-neutral">SYNTHETIC DEMO · LOCAL ONLY</span>
+            <span className="badge badge-neutral">SYNTHETIC DATA · LOCAL STATE</span>
             <span className="badge badge-webmcp">{webMcpLabel(webMcpStatus)}</span>
           </div>
         </div>
@@ -351,11 +351,13 @@ function DecisionProposalCard({
 }
 
 function TimelineItem({ entry }: { readonly entry: ActivityEntry }) {
+  const toolName = toolNameForActivity(entry.action);
   return (
     <li>
       <span className={`actor actor-${entry.actor}`}>{entry.actor}</span>
       <div>
         <strong>{entry.action.replaceAll("_", " ")}</strong>
+        {toolName && <span className="timeline-tool">WebMCP · {toolName}</span>}
         <p>{entry.summary}</p>
       </div>
       <code>
@@ -363,4 +365,19 @@ function TimelineItem({ entry }: { readonly entry: ActivityEntry }) {
       </code>
     </li>
   );
+}
+
+function toolNameForActivity(action: ActivityEntry["action"]): string | undefined {
+  switch (action) {
+    case "read_release_snapshot":
+      return "get_release_snapshot";
+    case "queried_network_evidence":
+      return "query_network_evidence";
+    case "proposed_test_case":
+      return "propose_test_case";
+    case "proposed_release_decision":
+      return "propose_release_decision";
+    default:
+      return undefined;
+  }
 }

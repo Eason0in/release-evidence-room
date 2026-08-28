@@ -31,7 +31,8 @@ type WorkflowErrorCode =
   | "invalid_test_proposal"
   | "request_id_reused"
   | "proposal_not_found"
-  | "proposal_not_pending";
+  | "proposal_not_pending"
+  | "release_already_decided";
 
 export interface WorkflowError {
   readonly ok: false;
@@ -341,6 +342,15 @@ export function reviewReleaseDecision(
   proposalIdValue: string,
   action: "confirm" | "reject",
 ): WorkflowResult<ReleaseDecisionProposal> {
+  if (action === "confirm" && state.humanDecision !== "pending") {
+    return {
+      ok: false,
+      code: "release_already_decided",
+      currentStateVersion: state.stateVersion,
+      message: "The release decision is already final.",
+    };
+  }
+
   const proposal = state.proposals.find(
     (candidate) => candidate.proposalId === proposalIdValue,
   );
