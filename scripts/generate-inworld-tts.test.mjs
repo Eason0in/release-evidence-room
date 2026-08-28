@@ -13,6 +13,10 @@ describe("Inworld narration helper", () => {
     });
   });
 
+  it("rejects text larger than one bounded API request", () => {
+    expect(() => buildPayload("x".repeat(2_001))).toThrow(/2000-character request limit/);
+  });
+
   it("decodes the base64 audio response", () => {
     expect(decodeAudioContent({ audioContent: Buffer.from("RIFF").toString("base64") })).toEqual(
       Buffer.from("RIFF"),

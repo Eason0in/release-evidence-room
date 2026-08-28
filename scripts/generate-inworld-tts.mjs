@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const endpoint = "https://api.inworld.ai/tts/v1/voice";
+const maxCharactersPerRequest = 2_000;
 
 export function buildPayload(
   text,
@@ -14,6 +15,9 @@ export function buildPayload(
 ) {
   const normalizedText = text.trim();
   if (!normalizedText) throw new Error("Narration text is empty.");
+  if (Array.from(normalizedText).length > maxCharactersPerRequest) {
+    throw new Error(`Narration text exceeds Inworld's ${maxCharactersPerRequest}-character request limit.`);
+  }
 
   return {
     text: normalizedText,

@@ -1,12 +1,12 @@
-# 80-second demo script
+# 90-second final demo script
 
-## 0–5 seconds — Hook
+## 0–6 seconds — Hook
 
 Hold on the green coverage panel.
 
 > Eighteen out of eighteen tests passed. Would you ship this payment retry build?
 
-## 5–11 seconds — Give the agent a bounded goal
+## 6–14 seconds — Give the agent a bounded goal
 
 Use this prompt in a WebMCP-capable browser:
 
@@ -19,25 +19,25 @@ Do not claim a duplicate charge without evidence.
 
 Show this prompt in the real agent interface before the native tool calls.
 
-## 11–27 seconds — Structured evidence
+## 14–31 seconds — Structured evidence
 
 The native agent calls `get_release_snapshot` and `query_network_evidence`. The page focuses `netev_retry_017`.
 
 > The agent queries page-owned evidence instead of scraping or guessing through the UI.
 
-## 27–36 seconds — Reveal the gap
+## 31–41 seconds — Reveal the gap
 
 Point to the two idempotency key refs and two accepted operation refs.
 
 > One payment intent created two accepted operations. That is a release risk, not proof of a duplicate charge.
 
-## 36–50 seconds — Test proposal handoff
+## 41–57 seconds — Test proposal handoff
 
 The agent calls `propose_test_case`. The proposal appears as pending. Click **Approve test**.
 
 > The agent can only propose. I approve the missing test; nothing has been executed.
 
-## 50–65 seconds — Decision proposal
+## 57–72 seconds — Decision proposal
 
 Prompt:
 
@@ -49,19 +49,23 @@ The agent reads version 14 and calls `propose_release_decision`. The HOLD card a
 
 > Even now, the agent has not changed the release decision.
 
-## 65–72 seconds — Human decision
+## 72–78 seconds — Human decision
 
 Click **Confirm HOLD**.
 
 > The release owner makes the call.
 
-## 72–80 seconds — Trust close
+## 78–90 seconds — Trust close
 
 Show the activity trail and its v12→v16 sequence.
 
 > Every read, proposal, and human action is attributed and versioned. There are no credentials, uploads, live company systems, or deploy tool.
 
-## Optional Inworld narration
+## Spoken narration
+
+Use [demo-narration.txt](demo-narration.txt) for the English voiceover. Keep the prompt and native tool calls visible while the narration explains the evidence and the human boundary. The current Inworld WAV is a local working artifact; the final submission must use a public video under three minutes.
+
+## Optional Inworld narration generation
 
 The checked-in narration text can be synthesized locally with Inworld's On-Demand plan. The API key is read only from the shell environment and is never written to the repository:
 
@@ -70,4 +74,6 @@ export INWORLD_API_KEY='your-key-from-the-inworld-portal'
 npm run demo:tts:inworld
 ```
 
-The default output is `demo-output/demo-narration-inworld.wav`. Use `INWORLD_VOICE_ID`, `INWORLD_MODEL_ID`, `INWORLD_TEXT_FILE`, or `INWORLD_OUTPUT` to override the defaults. Convert the WAV to the final video soundtrack with the local recording workflow; do not upload the API key or synthetic/private evidence.
+The default output is `demo-output/demo-narration-inworld.wav`. The helper intentionally limits each request to Inworld's documented 2,000-character maximum. Use `INWORLD_VOICE_ID`, `INWORLD_MODEL_ID`, `INWORLD_TEXT_FILE`, or `INWORLD_OUTPUT` to override the defaults. Convert the WAV to the final video soundtrack with the local recording workflow; do not upload the API key or synthetic/private evidence.
+
+`npm run demo:record` is a deterministic Playwright integration recording with an explicit `SIMULATED INTEGRATION TEST · NOT NATIVE EVIDENCE` watermark. It is useful for regression review, but the final challenge video must show the real WebMCP-capable browser/agent interaction.
