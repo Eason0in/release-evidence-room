@@ -6,20 +6,20 @@ This record separates deterministic integration evidence from native WebMCP evid
 
 | Layer | Command | Current result |
 | --- | --- | --- |
-| Domain, verifier, persistence, components, WebMCP adapter, and Inworld helper | `npm test` | **69 tests passed** |
+| Checkout state machine, evidence handoff, domain, verifier, persistence, components, WebMCP adapter, and Inworld helper | `npm test` | **83 tests passed** |
 | TypeScript and production bundle | `npm run build` | Passed |
 | Dependency audit | `npm audit --audit-level=high` | 0 vulnerabilities |
-| Full proposal and human-confirmation browser path | `npm run test:e2e` | 1 Playwright test passed |
+| Full `/checkout` evidence handoff, proposal, verification, and human-confirmation browser path | `npm run test:e2e` | 1 Playwright test passed |
 | Recorded deterministic browser path | `npm run demo:record` | 1 recorded Playwright test passed |
 | Inworld narration helper | `npm run demo:tts:inworld` | WAV generated from the checked-in English script; key is environment-only |
 
-The Playwright path injects a minimal `document.modelContext` registry. It proves that the application registers the intended definitions and that executing those definitions reaches the real application handlers. It does not prove native ChatGPT or Chrome tool discovery.
+The Playwright path starts at `/checkout`, creates the risky runtime trace, sends the exact session into `/`, injects a minimal `document.modelContext` registry, and completes the five-tool human-gated flow. It proves the same-origin evidence handoff and that executing the registered definitions reaches the real application handlers. It does not prove native ChatGPT or Chrome tool discovery.
 
 The deterministic video is a local integration artifact. Its explicit watermark says `SIMULATED INTEGRATION TEST · NOT NATIVE EVIDENCE`. It is not the final challenge video.
 
 ## Native WebMCP acceptance gate
 
-**Status: passed on 2026-08-28 against `https://release-evidence-room.vercel.app/` in ChatGPT's in-app browser.**
+**Current two-route status: pending deployment and native recertification.** The prior Release Room-only production build passed on 2026-08-28 against `https://release-evidence-room.vercel.app/` in ChatGPT's in-app browser. The recorded result below is retained as a historical baseline and does not certify the newly added `/checkout` route or its handoff.
 
 Native acceptance requires all of the following on `https://release-evidence-room.vercel.app/` in ChatGPT's in-app browser or Chrome 149+ with WebMCP enabled:
 
@@ -32,7 +32,7 @@ Native acceptance requires all of the following on `https://release-evidence-roo
 - Human controls and the versioned activity trail visibly reflect the native calls.
 - After a final decision, the native UI exposes no second confirmation control. The direct second-confirmation domain transition is covered separately by automated tests.
 
-### Recorded production-native result
+### Historical Release Room-only production-native result
 
 | Check | Observed result |
 | --- | --- |
@@ -49,12 +49,12 @@ Native acceptance requires all of the following on `https://release-evidence-roo
 | Bounds | `maxSteps: 101` was rejected; a verification run linked to a proposal containing only one side of the evidence pair returned `inconclusive` rather than inventing a verdict |
 | Browser health | Zero console errors after the complete flow and reload; no second `Confirm HOLD` control remained |
 
-Automated tests cover the compatibility fallback for hosts that omit the optional execute-callback options object. The deployed five-tool native flow succeeded in the current in-app browser, but the production session did not instrument callback arguments and therefore does not prove that the host exercised that fallback branch. The canonical production page served bundle `assets/index-dUdqh-KZ.js` during this acceptance session.
+Automated tests cover the compatibility fallback for hosts that omit the optional execute-callback options object. The earlier deployed five-tool native flow succeeded in the in-app browser, but that session did not instrument callback arguments and therefore does not prove that the host exercised the fallback branch. The historical canonical page served bundle `assets/index-dUdqh-KZ.js`.
 
 ## Manual native test script
 
-1. Open the production URL and click **Reset demo**.
-2. Discover the five tools; record their exact names and schemas.
+1. Open `https://release-evidence-room.vercel.app/checkout`, click **Place order · lose response**, choose **Retry with a new key**, and send the evidence to the Release Room.
+2. Open the Release Room and confirm it shows `checkout_session_017`, `idem_7f3c · idem_b15a`, and `op_01 · op_02`. Then discover the five tools and record their exact names and schemas.
 3. Call `get_release_snapshot`; expect build `207`, candidate `RC3`, state version `12`, and `18 / 18` tests.
 4. Call `query_network_evidence` with `riskType: duplicate_side_effect`, `severity: high`, and `limit: 20`; expect the single bounded item `netev_retry_017`.
 5. Call `propose_test_case` with `expectedStateVersion: 12`; expect pending `P-017` and state version `13`.
@@ -74,7 +74,7 @@ For a repeat acceptance run, record the browser/host, URL, discovered tool names
 - Execution of the proposed regression test against a payment service. The included verifier runs only the bounded synthetic model.
 - Random, unseeded, or unbounded monkey testing. The included state-machine run always requires a seed and a maximum of 100 steps.
 - Deployment, rollback, or production release actions; no such tool exists.
-- Multi-user synchronization, multi-tab conflict resolution, offline recovery, and cross-device persistence.
+- Multi-user synchronization, simultaneous same-version write conflict resolution, offline recovery, and cross-device persistence. Same-browser storage-event synchronization is covered by an automated test.
 - WebMCP behavior in Safari, mobile browsers, or hosts other than ChatGPT's in-app browser and WebMCP-enabled Chrome.
 - Inworld account billing state or voice quality across every available voice; the helper makes one bounded request and keeps the key out of source control.
 - Public YouTube upload and Devpost submission; both remain human-controlled external actions.

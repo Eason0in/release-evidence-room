@@ -8,16 +8,16 @@ Source of truth: [Official rules, section 7](https://webmcp.devpost.com/rules).
 
 | Criterion | Official question | Current estimate | Evidence | Main gap |
 | --- | --- | ---: | --- | --- |
-| WebMCP Leverage | How thoroughly and skillfully does the project use WebMCP? | **9.4 / 10** | Production-native discovery and execution of five real tools, strict schemas, runtime validation, human-gated verification, result-linked decisions, idempotent replay, and stale-state rejection. | The final public video still needs to make the native tool use immediately visible to judges. |
-| Execution | Is the project working, runnable, and a complete product experience? | **9.1 / 10** | Deployed production flow, 69 automated tests, build, E2E, zero-vulnerability audit, two native verification strategies, persistence reload, and zero browser errors. | The final public YouTube video and Devpost submission are not complete. |
-| Potential Impact | Does it make a credible, specific case for a real audience and problem? | **8.9 / 10** | The room no longer stops at suspicion: the deployed flow produces an evidence-linked, reproducible verdict before a release proposal while preserving a human gate. | The verifier models sanitized evidence and intentionally stops before a live TestLink/Charles/payment connector. |
+| WebMCP Leverage | How thoroughly and skillfully does the project use WebMCP? | **9.1 / 10** | Earlier production-native discovery and execution of five real tools, strict schemas, runtime validation, human-gated verification, result-linked decisions, idempotent replay, and stale-state rejection. | The new two-route build still needs production-native recertification and a judge-readable final video. |
+| Execution | Is the project working, runnable, and a complete product experience? | **8.9 / 10** | Checkout target, validated session handoff, 83 automated tests, build, E2E, zero-vulnerability audit, two verification strategies, overwrite protection, cross-tab synchronization, and v2 audit migration. | The `/checkout` route is not yet on the canonical production deployment; native recertification and the final public YouTube video remain. |
+| Potential Impact | Does it make a credible, specific case for a real audience and problem? | **8.9 / 10** | The recommended tester path starts from a visible QA target that creates the exact evidence the agent reviews, while direct root entry is honestly labeled as a deterministic fixture. | The checkout remains a synthetic browser-local target and intentionally stops before live TestLink/Charles/payment integrations. |
 | Creativity & Ambition | Is the concept novel and differentiated? | **9.1 / 10** | A release evidence room combines typed WebMCP accountability with exact replay and deterministic bounded monkey exploration rather than acting as a chat wrapper or deploy bot. | The video must make the distinction between model verification and live-system proof unmistakable. |
 
-**Current total: 36.5 / 40 (91.3%).** This is a planning estimate only.
+**Current total: 36.0 / 40 (90.0%).** This is a planning estimate only and reflects the pending two-route production gate.
 
 ## Plausible post-video target
 
-The production-native gate has passed. If the final English video clearly shows discovery, all five tools, both verification strategies, one idempotent replay, one stale-state rejection, human approval, and human confirmation, a reasonable internal target is:
+If the two-route build passes the production-native gate and the final English video clearly shows discovery, all five tools, both verification strategies, one idempotent replay, one stale-state rejection, human approval, and human confirmation, a reasonable internal target is:
 
 | Criterion | Target estimate |
 | --- | ---: |

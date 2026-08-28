@@ -1,4 +1,12 @@
-import { createDemoReleaseState } from "./evidence";
+import {
+  createDemoReleaseState,
+  createReleaseStateFromCheckoutSession,
+} from "./evidence";
+import {
+  createCheckoutSession,
+  retryPayment,
+  submitPaymentWithLostResponse,
+} from "../checkout/sandbox";
 import {
   proposeReleaseDecision,
   proposeTestCase,
@@ -360,19 +368,12 @@ describe("proposal workflow", () => {
   });
 
   it("allows READY when the linked verification does not reproduce risk", () => {
-    const fixture = createDemoReleaseState();
-    const safeFixture = {
-      ...fixture,
-      networkEvidence: fixture.networkEvidence.map((item) =>
-        item.phase === "retry_attempt"
-          ? {
-              ...item,
-              operationRefs: ["op_01"],
-              idempotencyKeyRefs: ["idem_7f3c"],
-            }
-          : item,
+    const safeFixture = createReleaseStateFromCheckoutSession(
+      retryPayment(
+        submitPaymentWithLostResponse(createCheckoutSession()),
+        "reuse_key",
       ),
-    };
+    );
     const proposed = proposeTestCase(safeFixture, testProposalInput);
     expect(proposed.ok).toBe(true);
     if (!proposed.ok) return;
@@ -406,6 +407,62 @@ describe("proposal workflow", () => {
       replayed: false,
       state: { stateVersion: 16, humanDecision: "pending" },
       value: { recommendation: "ready", status: "pending" },
+    });
+  });
+
+  it("rejects READY while any unresolved high risk remains", () => {
+    const safeFixture = createReleaseStateFromCheckoutSession(
+      retryPayment(
+        submitPaymentWithLostResponse(createCheckoutSession()),
+        "reuse_key",
+      ),
+    );
+    const contradictoryFixture = {
+      ...safeFixture,
+      risks: [
+        ...safeFixture.risks,
+        {
+          riskId: "risk_unresolved_high",
+          evidenceId: "netev_retry_017",
+          severity: "high" as const,
+          riskType: "duplicate_side_effect" as const,
+          summary: "An independent high risk remains unresolved.",
+          state: "unresolved" as const,
+        },
+      ],
+    };
+    const proposed = proposeTestCase(contradictoryFixture, testProposalInput);
+    expect(proposed.ok).toBe(true);
+    if (!proposed.ok) return;
+    const approved = reviewTestProposal(proposed.state, "P-017", "approve");
+    expect(approved.ok).toBe(true);
+    if (!approved.ok) return;
+    const verified = runApprovedVerification(approved.state, {
+      expectedStateVersion: 14,
+      clientRequestId: "verify-ready-high-risk",
+      testProposalId: "P-017",
+      strategy: "targeted_retry",
+    });
+    expect(verified).toMatchObject({
+      ok: true,
+      value: { verdict: "not_reproduced" },
+    });
+    if (!verified.ok) return;
+
+    const result = proposeReleaseDecision(verified.state, {
+      expectedStateVersion: 15,
+      clientRequestId: "decision-ready-high-risk",
+      recommendation: "ready",
+      rationale: "The linked retry was safe, but another high risk remains.",
+      evidenceIds: ["netev_retry_017"],
+      testProposalId: "P-017",
+      verificationResultId: "V-001",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "unresolved_high_risk",
+      currentStateVersion: 15,
     });
   });
 

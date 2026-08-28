@@ -30,7 +30,7 @@ The experience also survives without WebMCP: the complete page remains usable by
 
 ## 3. What people and agents can do together that was difficult before
 
-The demo begins with 18 of 18 tests passing. The bounded evidence still shows one payment intent associated with two accepted operation references and two idempotency key references. The agent can responsibly identify this as an exactly-once release risk without overstating it as a confirmed duplicate charge. It drafts the missing response-loss regression test; the human decides whether verification may run. After approval, an exact replay and a seeded bounded monkey run both reproduce two side effects in the synthetic model. The agent then links that result to a HOLD recommendation. The human alone approves the test and confirms the release decision.
+The demo begins on a public fictional checkout target. A controlled first attempt is accepted but loses its response; retrying the same intent with a new idempotency key creates a second operation. That exact browser-local session is handed to the Release Evidence Room, where 18 of 18 existing checks are still green. The agent can responsibly identify the exactly-once release risk without overstating it as a confirmed duplicate charge. It drafts the missing response-loss regression test; the human decides whether verification may run. After approval, an exact replay and a seeded bounded monkey run both reproduce two side effects in the synthetic model. The agent then links that result to a HOLD recommendation. The human alone approves the test and confirms the release decision.
 
 This division of labor combines machine-speed evidence synthesis with an explicit human accountability boundary. Every read, proposal, and human action is recorded in the same local state and displayed in the audit trail.
 
@@ -38,19 +38,19 @@ This division of labor combines machine-speed evidence synthesis with an explici
 
 The React and TypeScript application registers exactly five imperative tools through `document.modelContext.registerTool`: `get_release_snapshot`, `query_network_evidence`, `propose_test_case`, `run_approved_verification`, and `propose_release_decision`. Each tool uses a strict JSON schema with `additionalProperties: false` and a separate runtime parser that rejects malformed or unsupported values.
 
-Both the UI and tool handlers call the same pure domain transitions. A versioned localStorage adapter persists the synthetic room state and fails closed to the deterministic fixture if the envelope is malformed. Proposal transitions enforce optimistic concurrency through `expectedStateVersion` and retry safety through `clientRequestId`. Evidence results contain opaque references only; the project has no authentication, uploads, remote traffic fetch, analytics, or live company integration.
+The `/checkout` UI runs a deterministic checkout state model. A validated same-origin handoff converts its runtime attempts into bounded release evidence, which the approved verifier replays through targeted and seeded transition checks. Both the release UI and tool handlers call the same pure release-domain transitions. Versioned localStorage adapters persist and cross-check the checkout session and release state, failing closed if saved data is malformed or contradictory. Proposal transitions enforce optimistic concurrency through `expectedStateVersion` and retry safety through `clientRequestId`. Evidence results contain opaque references only; the project has no authentication, uploads, remote traffic fetch, analytics, or live company integration.
 
 ## Testing instructions
 
-1. Open the public app in ChatGPT's in-app browser, or in Chrome 149+ after enabling `chrome://flags/#enable-webmcp-testing` and relaunching.
-2. Ask the agent: `Review this release candidate for payment-retry safety. Use only evidence available in this page. Propose one missing test, but do not approve it for me. Do not claim a duplicate charge without evidence.`
-3. Confirm that the agent discovers the page tools, reads the snapshot, queries the high-severity retry evidence, and creates a pending test proposal.
+1. Open `https://release-evidence-room.vercel.app/checkout`, run **Place order · lose response**, choose **Retry with a new key**, and send the evidence to the Release Room.
+2. Confirm the Release Room shows `checkout_session_017`, both idempotency-key refs, and both operation refs. Use ChatGPT's in-app browser, or Chrome 149+ after enabling `chrome://flags/#enable-webmcp-testing` and relaunching.
+3. Ask the agent: `Review this release candidate for payment-retry safety. Use only evidence available in this page. Propose one missing test, but do not approve it for me. Do not claim a duplicate charge without evidence.` Confirm that it discovers the page tools, reads the snapshot, queries the high-severity retry evidence, and creates a pending test proposal.
 4. Confirm that verification is rejected before approval, then click **Approve test** as the human.
 5. Ask the agent to run the approved test first with `targeted_retry`, then with `seeded_monkey`, seed `37`, and `maxSteps: 20`. Confirm both results are linked to `P-017` and display `RISK CONFIRMED` for this fixture.
 6. Ask the agent to propose a release decision linked to `V-002`. Confirm that HOLD is only a proposal and the header remains UNDECIDED.
 7. Click **Confirm HOLD**, then inspect the activity trail for the attributed state sequence.
 
-The repository currently reports 69 automated tests. The production build, Playwright path, and dependency audit pass as release gates. On 2026-08-28, ChatGPT's in-app browser discovered all five tools on the canonical production URL and completed the approval, targeted replay, seeded monkey, decision, persistence, idempotency, stale-state, and out-of-bounds-input checks with zero console errors.
+The repository currently reports 83 automated tests. The production build, Playwright path, and dependency audit pass as local release gates. On 2026-08-28, ChatGPT's in-app browser discovered all five tools on the earlier Release Room-only production build and completed the approval, targeted replay, seeded monkey, decision, persistence, idempotency, stale-state, and out-of-bounds-input checks with zero console errors. The new `/checkout` handoff must be recertified after deployment before this draft is submitted.
 
 Use **Reset demo** before repeating the flow. No login or credentials are required.
 

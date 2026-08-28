@@ -28,11 +28,29 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("agent proposes and a human confirms HOLD", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/checkout");
+
+  await expect(
+    page.getByRole("heading", { name: "Checkout QA Sandbox" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Place order · lose response" }).click();
+  await expect(
+    page.getByText("Response lost after acceptance", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Retry with a new key" }).click();
+  await expect(
+    page.getByText("2 side effects observed", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Send evidence to Release Room" }).click();
+  await page.getByRole("link", { name: "Open Release Evidence Room" }).click();
 
   await expect(
     page.getByRole("heading", { name: "Release Evidence Room" }),
   ).toBeVisible();
+  await expect(page.getByText("checkout_session_017")).toBeVisible();
+  await expect(page.getByText("CHECKOUT RUNTIME")).toBeVisible();
+  await expect(page.getByText("idem_7f3c · idem_b15a")).toBeVisible();
+  await expect(page.getByText("op_01 · op_02")).toBeVisible();
   await expect(page.getByText("WebMCP · 5 tools available")).toBeVisible();
   await expect(page.getByText("18 / 18")).toBeVisible();
   await addDemoWatermark(page);
@@ -166,7 +184,7 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   await demoPause(page, 8_000);
 
   const persisted = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("release-evidence-room/v2")!),
+    JSON.parse(localStorage.getItem("release-evidence-room/v3")!),
   );
   expect(persisted.state).toMatchObject({
     stateVersion: 18,

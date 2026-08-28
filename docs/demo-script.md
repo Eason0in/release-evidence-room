@@ -1,12 +1,18 @@
-# 90-second final demo script
+# 100-second final demo script
 
-## 0–6 seconds — Hook
+## 0–10 seconds — Generate the evidence
+
+Open `/checkout`, click **Place order · lose response**, then **Retry with a new key**. Show `idem_7f3c → op_01`, `idem_b15a → op_02`, and **2 side effects observed**. Send the session to Release Evidence Room.
+
+> This public fictional checkout really generates the trace. There is no account, card, backend, or real payment.
+
+## 10–16 seconds — Hook
 
 Hold on the green coverage panel.
 
 > Eighteen out of eighteen tests passed. Would you ship this payment retry build?
 
-## 6–14 seconds — Give the agent a bounded goal
+## 16–24 seconds — Give the agent a bounded goal
 
 Use this prompt in a WebMCP-capable browser:
 
@@ -19,31 +25,31 @@ Do not claim a duplicate charge without evidence.
 
 Show this prompt in the real agent interface before the native tool calls.
 
-## 14–28 seconds — Structured evidence
+## 24–38 seconds — Structured evidence
 
 The native agent calls `get_release_snapshot` and `query_network_evidence`. The page focuses `netev_retry_017`.
 
 > The agent queries page-owned evidence instead of scraping or guessing through the UI.
 
-## 28–38 seconds — Reveal the gap
+## 38–48 seconds — Reveal the gap
 
 Point to the two idempotency key refs and two accepted operation refs.
 
 > One payment intent created two accepted operations. That is a release risk, not proof of a duplicate charge.
 
-## 38–50 seconds — Test proposal handoff
+## 48–60 seconds — Test proposal handoff
 
 The agent calls `propose_test_case`. The proposal appears as pending. Click **Approve test**.
 
 > The agent proposes the test. I decide whether its bounded verification may run.
 
-## 50–68 seconds — Two-stage verification
+## 60–78 seconds — Two-stage verification
 
 The agent calls `run_approved_verification` twice: first with `targeted_retry`, then with `seeded_monkey`, seed `37`, and a `20`-step cap. Show `V-001`, `V-002`, both `RISK CONFIRMED`, and the monkey trace reaching the modeled retry in four steps.
 
 > The exact replay reproduces the two side effects. A seeded state-machine run reaches the same failure through refresh and response-loss transitions. Both are real executions of the synthetic model—not claims about a live payment service.
 
-## 68–78 seconds — Decision proposal
+## 78–88 seconds — Decision proposal
 
 Prompt:
 
@@ -55,13 +61,13 @@ The agent reads version 16 and calls `propose_release_decision` with `V-002`. Th
 
 > Even now, the agent has not changed the release decision.
 
-## 78–83 seconds — Human decision
+## 88–93 seconds — Human decision
 
 Click **Confirm HOLD**.
 
 > The release owner makes the call.
 
-## 83–90 seconds — Trust close
+## 93–100 seconds — Trust close
 
 Show the activity trail and its v12→v18 sequence.
 

@@ -50,6 +50,7 @@ type WorkflowErrorCode =
   | "invalid_test_proposal"
   | "invalid_verification_input"
   | "invalid_verification_result"
+  | "unresolved_high_risk"
   | "request_id_reused"
   | "proposal_not_found"
   | "proposal_not_pending"
@@ -386,6 +387,19 @@ export function proposeReleaseDecision(
       message: `READY requires a not_reproduced verification result.`,
     };
   }
+  if (
+    input.recommendation === "ready" &&
+    state.risks.some(
+      (risk) => risk.severity === "high" && risk.state === "unresolved",
+    )
+  ) {
+    return {
+      ok: false,
+      code: "unresolved_high_risk",
+      currentStateVersion: state.stateVersion,
+      message: "READY is blocked while an unresolved high-severity risk remains.",
+    };
+  }
 
   const proposal: ReleaseDecisionProposal = {
     proposalId: proposalId(state),
@@ -584,6 +598,20 @@ export function reviewReleaseDecision(
   );
   const recommendation =
     proposal?.kind === "release_decision" ? proposal.recommendation : undefined;
+  if (
+    action === "confirm" &&
+    recommendation === "ready" &&
+    state.risks.some(
+      (risk) => risk.severity === "high" && risk.state === "unresolved",
+    )
+  ) {
+    return {
+      ok: false,
+      code: "unresolved_high_risk",
+      currentStateVersion: state.stateVersion,
+      message: "READY is blocked while an unresolved high-severity risk remains.",
+    };
+  }
   const humanDecision =
     action === "confirm" && recommendation ? recommendation : state.humanDecision;
   const eventAction =

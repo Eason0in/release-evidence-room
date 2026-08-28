@@ -2,7 +2,7 @@
 
 ## Outcome
 
-Ship a public, no-login, one-page WebMCP demo where a release owner and an agent inspect the same synthetic release evidence. The agent may query evidence, draft proposals, and run a human-approved bounded synthetic verification; only the human may approve a test case or confirm a Ready/Hold decision.
+Ship a public, no-login, two-route WebMCP demo where a fictional checkout target generates a runtime retry trace and a release owner plus agent inspect that exact synthetic evidence. The agent may query evidence, draft proposals, and run a human-approved bounded synthetic verification; only the human may approve a test case or confirm a Ready/Hold decision.
 
 ## Fixed scope
 
@@ -32,7 +32,7 @@ Ship a public, no-login, one-page WebMCP demo where a release owner and an agent
    - GREEN: thin adapter over the same application functions used by the UI.
    - Verify: adapter tests with a minimal fake `document.modelContext`.
 5. Judge-ready page
-   - RED: the 90-second path exposes the hidden risk, drafts and verifies a regression test, and leaves the final Hold decision to a human.
+   - RED: the 100-second path generates and exposes the hidden risk, drafts and verifies a regression test, and leaves the final Hold decision to a human.
    - GREEN: release header, coverage, evidence explorer, proposal inbox, and activity timeline.
    - Verify: component tests, Playwright happy path, production build, and manual WebMCP smoke in a supported browser.
 

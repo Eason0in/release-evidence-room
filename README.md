@@ -2,9 +2,9 @@
 
 **A privacy-safe WebMCP release review room where an agent builds the evidence case and a human makes the release decision.**
 
-> **Fixture state:** 18 / 18 release checks pass, while exactly-once retry behavior remains unproven. **Repository verification:** 69 automated tests pass.
+> **Runtime scenario:** the new Checkout QA Sandbox generates a response-loss retry trace, then hands that exact browser-local session to the Release Evidence Room. **Repository verification:** 83 automated tests pass. **Deployment status:** the two-route flow is verified locally and awaits production deployment and native recertification.
 
-Release Evidence Room is a one-page React and TypeScript WebMCP demo for a realistic release-engineering problem: a green test suite can still hide a payment-retry risk. The agent can read bounded evidence, draft proposals, and—only after human approval—run the approved scenario inside a synthetic sandbox. Only the human can approve a test proposal or confirm the final `READY` / `HOLD` decision.
+Release Evidence Room is a two-route React and TypeScript WebMCP demo for a realistic release-engineering problem: a green test suite can still hide a payment-retry risk. The public `/checkout` route is a fictional test target that generates a real runtime trace without an account, card, backend, or payment. It writes a versioned synthetic evidence session that the release room at `/` then reads. The agent can inspect that bounded evidence, draft proposals, and—only after human approval—run the approved scenario inside the same checkout model. Only the human can approve a test proposal or confirm the final `READY` / `HOLD` decision.
 
 The fixture is deliberately synthetic. It models a mobile checkout retry where one payment intent has two accepted operation references and two idempotency-key references. That is evidence of a release risk, not proof of a duplicate charge.
 
@@ -12,7 +12,8 @@ The fixture is deliberately synthetic. It models a mobile checkout retry where o
 
 | Resource | Link | Status |
 | --- | --- | --- |
-| Live application | <https://release-evidence-room.vercel.app/> | Production deployed; native WebMCP verified 2026-08-28 |
+| Live application | <https://release-evidence-room.vercel.app/> | Existing Release Room is deployed; the new two-route build is pending deployment |
+| Checkout QA Sandbox | <https://release-evidence-room.vercel.app/checkout> | Pending deployment on this branch; fictional and browser-local, with no account, card, backend, or real payment |
 | Source repository | <https://github.com/Eason0in/release-evidence-room> | Public MIT-licensed source |
 | Demo video | YouTube link pending final native-WebMCP capture | Local integration preview is not submission evidence |
 | Challenge | [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/) | Submission materials are English |
@@ -21,14 +22,15 @@ The live URL and repository are the canonical project resources. `demo-output/` 
 
 ## What the project does
 
-1. Shows a release candidate with `18 / 18` automated tests passing.
-2. Exposes two bounded, redacted network-evidence clusters already owned by the page.
-3. Lets a WebMCP-capable agent query that evidence and identify the missing exactly-once coverage.
-4. Lets the agent draft an evidence-linked regression test for human approval.
-5. After approval, runs an exact retry replay and an optional seeded, bounded state-machine monkey check inside the page-owned synthetic sandbox.
-6. Requires the resulting verification ID before the agent can draft a non-binding `READY` / `HOLD` recommendation.
-7. Keeps test approval and the final release decision in the human UI.
-8. Records reads, verification runs, proposals, and human actions in a versioned local audit trail.
+1. Runs a controlled payment response-loss scenario on the public `/checkout` test target.
+2. Demonstrates the safe baseline (same key → one operation) or the risky retry (new key → two operations).
+3. Sends that exact checkout session into the Release Evidence Room through validated, browser-local storage.
+4. Shows the linked release candidate with `18 / 18` automated tests passing and the runtime trace beside it.
+5. Lets a WebMCP-capable agent query the bounded evidence and identify the missing exactly-once coverage.
+6. Lets the agent draft an evidence-linked regression test for human approval.
+7. After approval, runs an exact retry replay and an optional seeded, bounded state-machine monkey check against the checkout model and imported session evidence.
+8. Requires the resulting verification ID before the agent can draft a non-binding `READY` / `HOLD` recommendation.
+9. Keeps test approval and the final release decision in the human UI and records every action in a versioned audit trail.
 
 The product moment is the mismatch between **green tests** and **unproven retry safety**. The agent speeds up evidence synthesis; the human retains accountability.
 
@@ -65,11 +67,13 @@ The first two tools intentionally use `readOnlyHint: false` because their visibl
 ## Architecture
 
 ```text
-WebMCP-capable agent ─┐
-                      ├─> strict tool adapter ─> pure domain transitions ─> versioned localStorage
+Public /checkout target ─> deterministic checkout state machine ─> validated evidence session ─┐
+                                                                                                 │
+WebMCP-capable agent ─┐                                                                           v
+                      ├─> strict tool adapter ─> pure release transitions ─> versioned localStorage
 Human release owner ──┘             │             │                        │
                                     │             └─ bounded verifier      └─ attributed audit trail
-                                    └─ bounded synthetic evidence
+                                    └─ imported checkout evidence
 ```
 
 The React UI and WebMCP adapter call the same domain functions. Persistence validates both structure and cross-field consistency, then falls back to the deterministic fixture if saved state is malformed or logically inconsistent.
@@ -96,9 +100,9 @@ npm audit --audit-level=high
 
 Current local evidence:
 
-- 69 Vitest tests pass across domain, verifier, persistence, components, WebMCP handlers, and the Inworld helper.
+- 83 Vitest tests pass across the checkout state machine, evidence handoff, domain, verifier, persistence, components, WebMCP handlers, and the Inworld helper.
 - TypeScript and the Vite production build pass.
-- The Playwright proposal-and-human-confirmation path passes.
+- The Playwright `/checkout` → evidence handoff → five-tool proposal → human-confirmed `HOLD` path passes.
 - The dependency audit reports zero high-severity vulnerabilities.
 - `npm run demo:record` records a deterministic Playwright integration path. Its watermark explicitly says it is not native WebMCP evidence.
 
@@ -106,7 +110,7 @@ See [the validation record](docs/validation.md) for the separation between autom
 
 ## Native WebMCP acceptance
 
-**Passed on 2026-08-28** against the canonical production URL in ChatGPT's in-app browser. This gate is separate from the Playwright test double. The production session verified:
+**Current two-route status: pending production deployment and recertification.** The earlier Release Room-only build passed native acceptance on 2026-08-28 against the canonical production URL in ChatGPT's in-app browser. That historical gate is separate from the Playwright test double and verified:
 
 1. Discovery returned exactly the five tool names listed above.
 2. Verification was rejected before the human approved `P-017`.
@@ -116,11 +120,11 @@ See [the validation record](docs/validation.md) for the separation between autom
 6. Exact request replay returned the original result without duplication, and a stale state version returned `state_conflict` without mutation.
 7. Reload restored state version `18`, the human `HOLD`, and both verification results; the browser reported zero console errors.
 
-The production run also rejected the out-of-bounds input `maxSteps: 101`. See [the validation record](docs/validation.md) for exact state transitions and intentionally untested behavior. The only remaining submission artifact is the final public YouTube demo; the local deterministic recording is still not native evidence.
+The historical production run also rejected the out-of-bounds input `maxSteps: 101`. It does not certify the newly added `/checkout` handoff, provenance label, overwrite guard, or cross-tab synchronization. See [the validation record](docs/validation.md) for exact state transitions and the required recertification script. The final public YouTube demo remains pending.
 
 ## Demo and voiceover assets
 
-- [90-second final demo script](docs/demo-script.md)
+- [100-second final demo script](docs/demo-script.md)
 - [English narration text](docs/demo-narration.txt)
 - [English submission draft](docs/submission-draft.md)
 - `npm run demo:record` — deterministic local integration recording only
@@ -135,6 +139,8 @@ The final challenge video must be an English-audio, public YouTube video under t
 - No authentication, uploads, analytics, remote traffic fetching, live TestLink connection, or live Charles connection exists.
 - Evidence exposes opaque references only; it does not expose raw hosts, paths, queries, headers, bodies, cookies, addresses, timestamps, or local file paths.
 - Verification is limited to a deterministic, page-owned synthetic ledger. There is no arbitrary-code, live-system test-execution, or deployment tool and no autonomous approval path.
+- The public Checkout QA Sandbox and Release Evidence Room share browser-local state on the same origin. This is a real demo integration, but it is not a remote commerce backend or production payment system.
+- Opening `/` directly uses a clearly labeled deterministic fixture. A `CHECKOUT RUNTIME` label appears only after a completed `/checkout` session is handed off. An in-progress review cannot be silently replaced.
 - `risk_confirmed` means the bounded fixture reproduced the modeled failure; `not_reproduced` means only that the bounded run did not reproduce it. Neither is a universal correctness claim.
 - The project does not claim packet capture or packet-content analysis; the fixture represents already-sanitized page-owned evidence.
 

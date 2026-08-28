@@ -1,3 +1,10 @@
+import {
+  createCheckoutSession,
+  retryPayment,
+  submitPaymentWithLostResponse,
+  type CheckoutSession,
+} from "../checkout/sandbox";
+
 export type Severity = "high" | "medium" | "low";
 export type RiskType =
   | "duplicate_side_effect"
@@ -116,6 +123,13 @@ export interface ReleaseState {
   readonly candidate: string;
   readonly build: string;
   readonly source: "synthetic";
+  readonly evidenceSession: {
+    readonly sessionId: string;
+    readonly sourcePath: "/checkout";
+    readonly scenario: "response_loss_retry";
+    readonly retryMode: "reuse_key" | "new_key";
+    readonly provenance: "fixture" | "checkout_runtime";
+  };
   readonly stateVersion: number;
   readonly tests: TestSummary;
   readonly risks: readonly ReleaseRisk[];
@@ -139,6 +153,7 @@ export interface ReleaseSnapshot {
   readonly candidate: string;
   readonly build: string;
   readonly source: "synthetic";
+  readonly evidenceSession: ReleaseState["evidenceSession"];
   readonly stateVersion: number;
   readonly tests: TestSummary;
   readonly unresolvedRiskCounts: Readonly<Record<Severity, number>>;
@@ -153,34 +168,67 @@ export interface NetworkEvidenceResult {
 }
 
 export function createDemoReleaseState(): ReleaseState {
+  return createReleaseStateFromCheckoutSession(
+    retryPayment(
+      submitPaymentWithLostResponse(createCheckoutSession()),
+      "new_key",
+    ),
+    "fixture",
+  );
+}
+
+export function createReleaseStateFromCheckoutSession(
+  session: CheckoutSession,
+  provenance: ReleaseState["evidenceSession"]["provenance"] = "checkout_runtime",
+): ReleaseState {
+  const initial = session.attempts.find(
+    (attempt) => attempt.phase === "initial_attempt",
+  );
+  const retry = session.attempts.find(
+    (attempt) => attempt.phase === "retry_attempt",
+  );
+  if (session.status !== "completed" || !session.retryMode || !initial || !retry) {
+    throw new Error("A completed checkout retry session is required.");
+  }
+  const duplicateObserved = session.observedSideEffects > 1;
+  const risks: ReleaseRisk[] = [];
+  if (duplicateObserved) {
+    risks.push({
+      riskId: "risk_exactly_once_01",
+      evidenceId: "netev_retry_017",
+      severity: "high",
+      riskType: "duplicate_side_effect",
+      summary:
+        "One payment intent produced two accepted operation refs across retry attempts.",
+      state: "unresolved",
+    });
+  }
+  risks.push({
+    riskId: "risk_response_loss_01",
+    evidenceId: "netev_response_016",
+    severity: "medium",
+    riskType: "response_loss",
+    summary:
+      "The first accepted attempt did not return a usable response before the retry.",
+    state: "unresolved",
+  });
+
   return {
     releaseId: "rel_demo_1042",
     releaseName: "Mobile Checkout 2.7.0",
     candidate: "RC3",
     build: "207",
     source: "synthetic",
+    evidenceSession: {
+      sessionId: session.sessionId,
+      sourcePath: "/checkout",
+      scenario: "response_loss_retry",
+      retryMode: session.retryMode,
+      provenance,
+    },
     stateVersion: 12,
     tests: { total: 18, passed: 18, failed: 0 },
-    risks: [
-      {
-        riskId: "risk_exactly_once_01",
-        evidenceId: "netev_retry_017",
-        severity: "high",
-        riskType: "duplicate_side_effect",
-        summary:
-          "One payment intent produced two accepted operation refs across retry attempts.",
-        state: "unresolved",
-      },
-      {
-        riskId: "risk_response_loss_01",
-        evidenceId: "netev_response_016",
-        severity: "medium",
-        riskType: "response_loss",
-        summary:
-          "The first accepted attempt did not return a usable response before the retry.",
-        state: "unresolved",
-      },
-    ],
+    risks,
     networkEvidence: [
       {
         evidenceId: "netev_retry_017",
@@ -189,12 +237,16 @@ export function createDemoReleaseState(): ReleaseState {
         phase: "retry_attempt",
         statusCode: 202,
         intentRef: "intent_8421",
-        operationRefs: ["op_01", "op_02"],
-        idempotencyKeyRefs: ["idem_7f3c", "idem_b15a"],
+        operationRefs: [initial.operationRef, retry.operationRef],
+        idempotencyKeyRefs: [
+          initial.idempotencyKeyRef,
+          retry.idempotencyKeyRef,
+        ],
         riskType: "duplicate_side_effect",
-        severity: "high",
-        summary:
-          "Two accepted operation refs were observed for one intent; duplicate charge is not established.",
+        severity: duplicateObserved ? "high" : "low",
+        summary: duplicateObserved
+          ? "Two accepted operation refs were observed for one intent; duplicate charge is not established."
+          : "The retry reused the accepted operation; no duplicate side effect was observed.",
         confidence: "observed",
       },
       {
@@ -204,8 +256,8 @@ export function createDemoReleaseState(): ReleaseState {
         phase: "initial_attempt",
         statusCode: 202,
         intentRef: "intent_8421",
-        operationRefs: ["op_01"],
-        idempotencyKeyRefs: ["idem_7f3c"],
+        operationRefs: [initial.operationRef],
+        idempotencyKeyRefs: [initial.idempotencyKeyRef],
         riskType: "response_loss",
         severity: "medium",
         summary:
@@ -240,6 +292,7 @@ export function getReleaseSnapshot(state: ReleaseState): ReleaseSnapshot {
     candidate: state.candidate,
     build: state.build,
     source: state.source,
+    evidenceSession: state.evidenceSession,
     stateVersion: state.stateVersion,
     tests: state.tests,
     unresolvedRiskCounts,

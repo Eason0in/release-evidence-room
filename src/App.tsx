@@ -89,6 +89,15 @@ export function App(_props: AppProps) {
             <span className="badge badge-neutral">SYNTHETIC DATA · LOCAL STATE</span>
             <span className="badge badge-webmcp">{webMcpLabel(webMcpStatus)}</span>
           </div>
+          <div className="source-session">
+            <span>
+              {state.evidenceSession.provenance === "checkout_runtime"
+                ? "CHECKOUT RUNTIME"
+                : "DETERMINISTIC FIXTURE"}
+            </span>
+            <code>{state.evidenceSession.sessionId}</code>
+            <a href={state.evidenceSession.sourcePath}>Open Checkout QA Sandbox</a>
+          </div>
         </div>
         <div className="decision-block">
           <p className="eyebrow">RELEASE DECISION</p>
