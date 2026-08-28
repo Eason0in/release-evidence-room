@@ -1,0 +1,11 @@
+Eighteen out of eighteen tests passed. Would you ship this payment retry build?
+
+Release Evidence Room gives a release owner and an agent one shared, bounded evidence space. The agent reads the current release snapshot and queries only privacy-safe evidence already owned by this page. It never fetches an arbitrary URL or sees raw traffic.
+
+One payment intent produced two accepted operation references with different idempotency key references. That establishes a release risk, not proof of a duplicate charge.
+
+The agent proposes the missing response-loss regression test. It cannot approve or execute it. I approve the proposal as the human release owner, and the page records that the test is required but has not run.
+
+The agent reads the new state and recommends HOLD. The release remains undecided until I confirm it.
+
+Every read, proposal, and human action is attributed and versioned. There are no credentials, uploads, live company systems, autonomous approvals, or deployment tool. The agent builds the evidence case. The human makes the release decision.

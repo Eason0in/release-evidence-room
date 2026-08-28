@@ -1,6 +1,7 @@
 import {
   createReleaseEvidenceTools,
   registerReleaseEvidenceTools,
+  releaseToolSchemas,
   ToolInputError,
   type ReleaseEvidenceHandlers,
   type ToolRegistry,
@@ -32,10 +33,41 @@ describe("WebMCP tools", () => {
         additionalProperties: false,
       });
     }
-    expect(tools[0].annotations?.readOnlyHint).toBe(true);
-    expect(tools[1].annotations?.readOnlyHint).toBe(true);
+    expect(tools[0].annotations?.readOnlyHint).toBe(false);
+    expect(tools[1].annotations?.readOnlyHint).toBe(false);
     expect(tools[2].annotations?.readOnlyHint).toBe(false);
     expect(tools[3].annotations?.readOnlyHint).toBe(false);
+  });
+
+  it("rejects risk filters that have no evidence in the room", async () => {
+    const handlers = createHandlers();
+    const tool = createReleaseEvidenceTools(handlers)[1];
+
+    await expect(
+      Promise.resolve().then(() =>
+        tool.execute(
+          { riskType: "retry_without_stable_key" },
+          { signal: new AbortController().signal },
+        ),
+      ),
+    ).rejects.toBeInstanceOf(ToolInputError);
+    expect(handlers.queryNetworkEvidence).not.toHaveBeenCalled();
+  });
+
+  it("gives native agents schema guidance that matches runtime validation", () => {
+    expect(releaseToolSchemas.testCase.properties.clientRequestId).toMatchObject({
+      pattern: "^[A-Za-z0-9._:-]+$",
+      description: expect.stringMatching(/retry identical content/i),
+    });
+    expect(releaseToolSchemas.testCase.properties.expectedStateVersion).toMatchObject({
+      description: expect.stringMatching(/latest get_release_snapshot/i),
+    });
+    expect(releaseToolSchemas.testCase.properties.evidenceIds).toMatchObject({
+      description: expect.stringMatching(/query_network_evidence/i),
+    });
+    expect(releaseToolSchemas.releaseDecision.properties.testProposalId).toMatchObject({
+      description: expect.stringMatching(/approved test/i),
+    });
   });
 
   it("quietly preserves the normal UI when WebMCP is unavailable", async () => {

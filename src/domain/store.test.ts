@@ -51,6 +51,47 @@ describe("release room store", () => {
     });
   });
 
+  it.each([
+    ["network evidence phase", (state: ReturnType<typeof createDemoReleaseState>) => ({
+      ...state,
+      networkEvidence: [{ ...state.networkEvidence[0], phase: "tampered" }],
+    })],
+    ["network evidence severity", (state: ReturnType<typeof createDemoReleaseState>) => ({
+      ...state,
+      networkEvidence: [{ ...state.networkEvidence[0], severity: "critical" }],
+    })],
+    ["release recommendation", (state: ReturnType<typeof createDemoReleaseState>) => ({
+      ...state,
+      proposals: [{
+        proposalId: "P-017",
+        kind: "release_decision",
+        status: "pending",
+        clientRequestId: "req-tampered",
+        requestFingerprint: "tampered",
+        recommendation: "ship_it",
+        rationale: "Tampered local state.",
+        evidenceIds: ["netev_retry_017"],
+      }],
+    })],
+    ["human decision without a matching confirmed proposal", (state: ReturnType<typeof createDemoReleaseState>) => ({
+      ...state,
+      humanDecision: "ready",
+    })],
+  ])("fails closed when persisted %s is invalid", (_label, mutate) => {
+    const fixture = createDemoReleaseState();
+    localStorage.setItem(
+      RELEASE_ROOM_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: "release-evidence-room/v1",
+        state: mutate(fixture),
+      }),
+    );
+
+    const store = createReleaseRoomStore(localStorage);
+
+    expect(store.getState()).toEqual(fixture);
+  });
+
   it("notifies subscribers and can reset the demo", () => {
     const store = createReleaseRoomStore(localStorage);
     const listener = vi.fn();

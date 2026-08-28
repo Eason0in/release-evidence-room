@@ -1,14 +1,33 @@
 {
   "name": "release-evidence-room",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "A human-controlled WebMCP release review room built around bounded evidence and auditable proposals.",
+  "license": "MIT",
+  "author": "Eason0in",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Eason0in/release-evidence-room.git"
+  },
+  "homepage": "https://release-evidence-room.vercel.app/",
+  "keywords": [
+    "webmcp",
+    "release-engineering",
+    "human-in-the-loop",
+    "evidence",
+    "openai-webmcp-challenge"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "demo:record": "DEMO_RECORDING=1 playwright test --config=playwright.demo.config.ts"
   },
   "dependencies": {
     "react": "19.2.8",

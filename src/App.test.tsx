@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createReleaseRoomStore } from "./domain/store";
 import {
   proposeReleaseDecision,
   proposeTestCase,
+  recordAgentRead,
   reviewTestProposal,
 } from "./domain/workflow";
 import { App } from "./App";
@@ -37,6 +38,42 @@ describe("Release Evidence Room", () => {
     expect(screen.getByText("UNDECIDED")).toBeInTheDocument();
     expect(screen.getByText("WebMCP · 4 tools available")).toBeInTheDocument();
     expect(screen.getByText("No deploy action is exposed.")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/one payment intent produced two accepted operation refs/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reveals the synthesized finding after the agent focuses evidence", () => {
+    const store = createReleaseRoomStore(localStorage);
+    store.setState(
+      recordAgentRead(
+        store.getState(),
+        "queried_network_evidence",
+        "1 bounded evidence item returned.",
+        ["netev_retry_017"],
+      ),
+    );
+
+    render(<App store={store} webMcpStatus="available" />);
+
+    expect(
+      screen.getByText(/two accepted operation refs were observed for one intent/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("FOCUSED EVIDENCE INTERPRETATION")).toBeInTheDocument();
+  });
+
+  it("announces an agent proposal to assistive technology", () => {
+    const store = createReleaseRoomStore(localStorage);
+    render(<App store={store} webMcpStatus="available" />);
+    const proposed = proposeTestCase(store.getState(), testInput);
+    expect(proposed.ok).toBe(true);
+    if (!proposed.ok) return;
+
+    act(() => store.setState(proposed.state));
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "1 proposal pending human review.",
+    );
   });
 
   it("lets only the human approve a pending test proposal", () => {

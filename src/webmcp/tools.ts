@@ -45,12 +45,22 @@ export const releaseToolSchemas = {
         type: "string",
         enum: [
           "duplicate_side_effect",
-          "retry_without_stable_key",
           "response_loss",
         ],
+        description: "Optional risk category already present in this room.",
       },
-      severity: { type: "string", enum: ["high", "medium", "low"] },
-      limit: { type: "integer", minimum: 1, maximum: 20, default: 20 },
+      severity: {
+        type: "string",
+        enum: ["high", "medium", "low"],
+        description: "Optional severity filter for page-owned evidence.",
+      },
+      limit: {
+        type: "integer",
+        minimum: 1,
+        maximum: 20,
+        default: 20,
+        description: "Maximum evidence items to return.",
+      },
     },
     required: [],
     additionalProperties: false,
@@ -58,18 +68,58 @@ export const releaseToolSchemas = {
   testCase: {
     type: "object",
     properties: {
-      expectedStateVersion: { type: "integer", minimum: 0 },
-      clientRequestId: { type: "string", minLength: 1, maxLength: 80 },
-      title: { type: "string", minLength: 1, maxLength: 120 },
-      given: { type: "string", minLength: 1, maxLength: 500 },
-      when: { type: "string", minLength: 1, maxLength: 500 },
-      then: { type: "string", minLength: 1, maxLength: 500 },
+      expectedStateVersion: {
+        type: "integer",
+        minimum: 0,
+        description: "Copy stateVersion from the latest get_release_snapshot result.",
+      },
+      clientRequestId: {
+        type: "string",
+        minLength: 1,
+        maxLength: 80,
+        pattern: "^[A-Za-z0-9._:-]+$",
+        description: "Use a unique ID per logical proposal; reuse it only to retry identical content.",
+      },
+      title: {
+        type: "string",
+        minLength: 1,
+        maxLength: 120,
+        pattern: ".*\\S.*",
+        description: "Concise name for the missing regression test.",
+      },
+      given: {
+        type: "string",
+        minLength: 1,
+        maxLength: 500,
+        pattern: ".*\\S.*",
+        description: "Test precondition grounded in room evidence.",
+      },
+      when: {
+        type: "string",
+        minLength: 1,
+        maxLength: 500,
+        pattern: ".*\\S.*",
+        description: "Action or failure condition exercised by the test.",
+      },
+      then: {
+        type: "string",
+        minLength: 1,
+        maxLength: 500,
+        pattern: ".*\\S.*",
+        description: "Observable safety outcome the test must assert.",
+      },
       evidenceIds: {
         type: "array",
         minItems: 1,
         maxItems: 10,
         uniqueItems: true,
-        items: { type: "string", minLength: 1, maxLength: 80 },
+        items: {
+          type: "string",
+          minLength: 1,
+          maxLength: 80,
+          pattern: ".*\\S.*",
+        },
+        description: "Use evidence IDs returned by query_network_evidence.",
       },
     },
     required: [
@@ -86,18 +136,50 @@ export const releaseToolSchemas = {
   releaseDecision: {
     type: "object",
     properties: {
-      expectedStateVersion: { type: "integer", minimum: 0 },
-      clientRequestId: { type: "string", minLength: 1, maxLength: 80 },
-      recommendation: { type: "string", enum: ["ready", "hold"] },
-      rationale: { type: "string", minLength: 1, maxLength: 1000 },
+      expectedStateVersion: {
+        type: "integer",
+        minimum: 0,
+        description: "Copy stateVersion from the latest get_release_snapshot result.",
+      },
+      clientRequestId: {
+        type: "string",
+        minLength: 1,
+        maxLength: 80,
+        pattern: "^[A-Za-z0-9._:-]+$",
+        description: "Use a unique ID per logical proposal; reuse it only to retry identical content.",
+      },
+      recommendation: {
+        type: "string",
+        enum: ["ready", "hold"],
+        description: "Non-binding recommendation; only a human can confirm it.",
+      },
+      rationale: {
+        type: "string",
+        minLength: 1,
+        maxLength: 1000,
+        pattern: ".*\\S.*",
+        description: "Evidence-grounded explanation for the recommendation.",
+      },
       evidenceIds: {
         type: "array",
         minItems: 1,
         maxItems: 10,
         uniqueItems: true,
-        items: { type: "string", minLength: 1, maxLength: 80 },
+        items: {
+          type: "string",
+          minLength: 1,
+          maxLength: 80,
+          pattern: ".*\\S.*",
+        },
+        description: "Use evidence IDs returned by query_network_evidence.",
       },
-      testProposalId: { type: "string", minLength: 1, maxLength: 80 },
+      testProposalId: {
+        type: "string",
+        minLength: 1,
+        maxLength: 80,
+        pattern: ".*\\S.*",
+        description: "Optional ID of an approved test proposal that this decision depends on.",
+      },
     },
     required: [
       "expectedStateVersion",
@@ -197,7 +279,6 @@ function parseNetworkQuery(input: Record<string, unknown>): NetworkEvidenceQuery
   assertKeys(record, ["riskType", "severity", "limit"], []);
   const riskTypes = [
     "duplicate_side_effect",
-    "retry_without_stable_key",
     "response_loss",
   ] as const;
   const severities = ["high", "medium", "low"] as const;
@@ -290,9 +371,9 @@ export function createReleaseEvidenceTools(
       name: "get_release_snapshot",
       title: "Get release snapshot",
       description:
-        "Read the active synthetic release, checks, evidence gaps, pending proposals, human decision, and state version. Makes no release change.",
+        "Read the active synthetic release, checks, evidence gaps, every proposal with its ID and status, human decision, and current state version. Use the returned stateVersion for the next proposal. Appends a local audit entry but makes no release change.",
       inputSchema: releaseToolSchemas.snapshot,
-      annotations: { readOnlyHint: true, untrustedContentHint: true },
+      annotations: { readOnlyHint: false, untrustedContentHint: true },
       async execute(input, { signal }) {
         assertActive(signal);
         parseSnapshotInput(input);
@@ -303,9 +384,9 @@ export function createReleaseEvidenceTools(
       name: "query_network_evidence",
       title: "Query network evidence",
       description:
-        "Filter only the bounded, redacted network evidence already present in this page. Never fetches a URL or returns raw traffic.",
+        "Filter only the bounded, redacted network evidence already present in this page. Updates local focus and audit state, but never fetches a URL, changes source evidence, or returns raw traffic.",
       inputSchema: releaseToolSchemas.networkQuery,
-      annotations: { readOnlyHint: true, untrustedContentHint: true },
+      annotations: { readOnlyHint: false, untrustedContentHint: true },
       async execute(input, { signal }) {
         assertActive(signal);
         return handlers.queryNetworkEvidence(parseNetworkQuery(input), signal);
@@ -327,7 +408,7 @@ export function createReleaseEvidenceTools(
       name: "propose_release_decision",
       title: "Propose a release decision",
       description:
-        "Create a non-binding READY or HOLD proposal grounded in room evidence. Cannot confirm, deploy, or release.",
+        "Create a non-binding READY or HOLD proposal grounded in room evidence. If testProposalId is supplied, it must identify an approved test proposal from the latest snapshot. Cannot confirm, deploy, or release.",
       inputSchema: releaseToolSchemas.releaseDecision,
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       async execute(input, { signal }) {
@@ -345,11 +426,12 @@ function detectRegistry(): ToolRegistry | undefined {
 export async function registerReleaseEvidenceTools(
   handlers: ReleaseEvidenceHandlers,
   registry: ToolRegistry | undefined = detectRegistry(),
+  controller: AbortController = new AbortController(),
 ): Promise<(() => void) | null> {
   if (!registry) return null;
-  const controller = new AbortController();
   try {
     for (const tool of createReleaseEvidenceTools(handlers)) {
+      assertActive(controller.signal);
       await registry.registerTool(tool, { signal: controller.signal });
     }
   } catch (error) {

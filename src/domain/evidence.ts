@@ -1,7 +1,6 @@
 export type Severity = "high" | "medium" | "low";
 export type RiskType =
   | "duplicate_side_effect"
-  | "retry_without_stable_key"
   | "response_loss";
 
 export interface TestSummary {

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+const demoRecording = process.env.DEMO_RECORDING === "1";
+
 type BrowserTool = {
   execute(
     input: Record<string, unknown>,
@@ -33,6 +35,7 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("WebMCP · 4 tools available")).toBeVisible();
   await expect(page.getByText("18 / 18")).toBeVisible();
+  await demoPause(page, 5_000);
 
   const toolNames = await page.evaluate(() =>
     Object.keys(
@@ -51,6 +54,7 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   expect(toolNames.some((name) => name.includes("deploy"))).toBe(false);
 
   await invokeTool(page, "get_release_snapshot", {});
+  await demoPause(page, 3_000);
   await invokeTool(page, "query_network_evidence", {
     riskType: "duplicate_side_effect",
     severity: "high",
@@ -60,6 +64,8 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   await expect(page.locator('[data-evidence-id="netev_retry_017"]')).toHaveClass(
     /focused-row/,
   );
+  await demoFocus(page, ".evidence-panel");
+  await demoPause(page, 7_000);
 
   await invokeTool(page, "propose_test_case", {
     expectedStateVersion: 12,
@@ -71,10 +77,14 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
     evidenceIds: ["netev_retry_017", "netev_response_016"],
   });
   await expect(page.getByText("PENDING HUMAN REVIEW", { exact: true })).toBeVisible();
+  await demoFocus(page, ".inbox-panel");
+  await demoPause(page, 6_000);
   await page.getByRole("button", { name: "Approve test" }).click();
   await expect(page.getByText("APPROVED BY HUMAN", { exact: true })).toBeVisible();
+  await demoPause(page, 6_000);
 
   await invokeTool(page, "get_release_snapshot", {});
+  await demoPause(page, 2_000);
   await invokeTool(page, "propose_release_decision", {
     expectedStateVersion: 14,
     clientRequestId: "req-e2e-decision-01",
@@ -87,9 +97,15 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
 
   await expect(page.locator(".proposal-recommendation")).toHaveText("HOLD");
   await expect(page.locator(".decision")).toHaveText("UNDECIDED");
+  await demoFocus(page, ".inbox-panel");
+  await demoPause(page, 7_000);
   await page.getByRole("button", { name: "Confirm HOLD" }).click();
   await expect(page.locator(".decision")).toHaveText("HOLD");
   await expect(page.getByText("Human confirmed")).toBeVisible();
+  await demoFocus(page, ".release-header");
+  await demoPause(page, 5_000);
+  await demoFocus(page, ".timeline-panel");
+  await demoPause(page, 8_000);
 
   const persisted = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("release-evidence-room/v1")!),
@@ -104,6 +120,20 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   });
   expect(persisted.state.activity).toHaveLength(7);
 });
+
+async function demoPause(
+  page: import("@playwright/test").Page,
+  milliseconds: number,
+): Promise<void> {
+  if (demoRecording) await page.waitForTimeout(milliseconds);
+}
+
+async function demoFocus(
+  page: import("@playwright/test").Page,
+  selector: string,
+): Promise<void> {
+  if (demoRecording) await page.locator(selector).scrollIntoViewIfNeeded();
+}
 
 async function invokeTool(
   page: import("@playwright/test").Page,
