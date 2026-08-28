@@ -19,7 +19,17 @@ The deterministic video is a local integration artifact. Its explicit watermark 
 
 ## Native WebMCP acceptance gate
 
-**Current two-route status: pending deployment and native recertification.** The prior Release Room-only production build passed on 2026-08-28 against `https://release-evidence-room.vercel.app/` in ChatGPT's in-app browser. The recorded result below is retained as a historical baseline and does not certify the newly added `/checkout` route or its handoff.
+**Current two-route status: deployed; clean-state native recertification pending.** The production checks below were performed against `https://release-evidence-room.vercel.app/` on 2026-08-28:
+
+| Current production check | Observed result |
+| --- | --- |
+| Public routes | `/` and `/checkout` both returned HTTP 200. |
+| Production bundle | `assets/index-B-bB2yU5.js` contained the checkout UI, `CHECKOUT RUNTIME` provenance label, and `run_approved_verification`. |
+| Native discovery | ChatGPT's in-app browser discovered exactly the five documented WebMCP tools on `/`. |
+| v2 migration | The prior P-017/P-018 proposals, V-001/V-002 results, human-confirmed HOLD, and audit trail remained visible after deployment. |
+| Handoff overwrite guard | A newly generated checkout trace was refused because the migrated review already contained activity; the old audit remained intact. |
+
+The prior Release Room-only production build passed the full native tool path recorded below. A fresh browser-local state is still required to recertify the newly deployed `/checkout` → `CHECKOUT RUNTIME` → five-tool → human-confirmed HOLD path as one uninterrupted native run.
 
 Native acceptance requires all of the following on `https://release-evidence-room.vercel.app/` in ChatGPT's in-app browser or Chrome 149+ with WebMCP enabled:
 
@@ -53,15 +63,17 @@ Automated tests cover the compatibility fallback for hosts that omit the optiona
 
 ## Manual native test script
 
+For the judge-facing explanation, reasons for every step, copy-ready prompts, and expected UI results, use [Judge walkthrough](judge-walkthrough.md). The checklist below is the compact acceptance version.
+
 1. Open `https://release-evidence-room.vercel.app/checkout`, click **Place order · lose response**, choose **Retry with a new key**, and send the evidence to the Release Room.
 2. Open the Release Room and confirm it shows `checkout_session_017`, `idem_7f3c · idem_b15a`, and `op_01 · op_02`. Then discover the five tools and record their exact names and schemas.
 3. Call `get_release_snapshot`; expect build `207`, candidate `RC3`, state version `12`, and `18 / 18` tests.
-4. Call `query_network_evidence` with `riskType: duplicate_side_effect`, `severity: high`, and `limit: 20`; expect the single bounded item `netev_retry_017`.
-5. Call `propose_test_case` with `expectedStateVersion: 12`; expect pending `P-017` and state version `13`.
+4. Call `query_network_evidence` with `limit: 20` and no risk-type or severity filter; expect both `netev_response_016` (initial attempt) and `netev_retry_017` (retry attempt).
+5. Call `propose_test_case` with `expectedStateVersion: 12` and both evidence IDs; expect pending `P-017` and state version `13`.
 6. Before approval, try `run_approved_verification`; expect `invalid_test_proposal` and no mutation. Then click **Approve test**; expect state version `14`.
-7. Call `run_approved_verification` with `expectedStateVersion: 14`, `testProposalId: P-017`, and `strategy: targeted_retry`; expect `V-001`, `risk_confirmed`, two side effects, and state version `15`.
+7. Call `get_release_snapshot` again after human approval; expect approved `P-017` and state version `14`. Then call `run_approved_verification` with that `expectedStateVersion`, `testProposalId: P-017`, and `strategy: targeted_retry`; expect `V-001`, `risk_confirmed`, two side effects, and state version `15`.
 8. Call it again with a new request ID, `expectedStateVersion: 15`, `strategy: seeded_monkey`, `seed: 37`, and `maxSteps: 20`; expect reproducible `V-002`, four executed steps, `risk_confirmed`, and state version `16`.
-9. First try `recommendation: ready` with a risk-confirmed result; expect `invalid_verification_result`. Then call `propose_release_decision` with `expectedStateVersion: 16`, `recommendation: hold`, `testProposalId: P-017`, and one matching verification result; expect pending `P-018` while the header remains `UNDECIDED`.
+9. First actually call `propose_release_decision` with `recommendation: ready` and a risk-confirmed result; expect `invalid_verification_result`. Then call it again with a new request ID, `expectedStateVersion: 16`, `recommendation: hold`, `testProposalId: P-017`, and one matching verification result; expect pending `P-018` while the header remains `UNDECIDED`.
 10. Replay the exact same request; expect `replayed: true` and unchanged state version `17`.
 11. Send a stale proposal with `expectedStateVersion: 12`; expect `state_conflict` and unchanged proposal and verification counts.
 12. Click **Confirm HOLD**; expect `HOLD`, `Human confirmed`, and a final state version `18`.

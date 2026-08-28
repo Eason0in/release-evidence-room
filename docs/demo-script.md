@@ -19,7 +19,7 @@ Use this prompt in a WebMCP-capable browser:
 ```text
 Review this release candidate for payment-retry safety.
 Use only evidence available in this page.
-Propose one missing test, but do not approve it for me.
+Query both the accepted initial attempt and its retry, then propose one missing test linked to both evidence records. Do not approve it for me.
 Do not claim a duplicate charge without evidence.
 ```
 
@@ -27,7 +27,7 @@ Show this prompt in the real agent interface before the native tool calls.
 
 ## 24–38 seconds — Structured evidence
 
-The native agent calls `get_release_snapshot` and `query_network_evidence`. The page focuses `netev_retry_017`.
+The native agent calls `get_release_snapshot` and `query_network_evidence` without risk or severity filters. The page focuses both `netev_response_016` and `netev_retry_017`.
 
 > The agent queries page-owned evidence instead of scraping or guessing through the UI.
 
@@ -45,7 +45,7 @@ The agent calls `propose_test_case`. The proposal appears as pending. Click **Ap
 
 ## 60–78 seconds — Two-stage verification
 
-The agent calls `run_approved_verification` twice: first with `targeted_retry`, then with `seeded_monkey`, seed `37`, and a `20`-step cap. Show `V-001`, `V-002`, both `RISK CONFIRMED`, and the monkey trace reaching the modeled retry in four steps.
+After human approval, the agent calls `get_release_snapshot` again and receives state version `14`. It then calls `run_approved_verification` twice: first with `targeted_retry`, then with `seeded_monkey`, seed `37`, and a `20`-step cap. Show `V-001`, `V-002`, both `RISK CONFIRMED`, and the monkey trace reaching the modeled retry in four steps.
 
 > The exact replay reproduces the two side effects. A seeded state-machine run reaches the same failure through refresh and response-loss transitions. Both are real executions of the synthetic model—not claims about a live payment service.
 

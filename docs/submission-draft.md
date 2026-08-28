@@ -42,15 +42,17 @@ The `/checkout` UI runs a deterministic checkout state model. A validated same-o
 
 ## Testing instructions
 
+The complete judge-oriented walkthrough, including the reason and expected result for every step, is available in the [judge walkthrough](https://github.com/Eason0in/release-evidence-room/blob/docs/judge-walkthrough-review/docs/judge-walkthrough.md) on the review branch.
+
 1. Open `https://release-evidence-room.vercel.app/checkout`, run **Place order · lose response**, choose **Retry with a new key**, and send the evidence to the Release Room.
 2. Confirm the Release Room shows `checkout_session_017`, both idempotency-key refs, and both operation refs. Use ChatGPT's in-app browser, or Chrome 149+ after enabling `chrome://flags/#enable-webmcp-testing` and relaunching.
-3. Ask the agent: `Review this release candidate for payment-retry safety. Use only evidence available in this page. Propose one missing test, but do not approve it for me. Do not claim a duplicate charge without evidence.` Confirm that it discovers the page tools, reads the snapshot, queries the high-severity retry evidence, and creates a pending test proposal.
+3. Ask the agent: `Review this release candidate for payment-retry safety. Use only evidence available in this page. Query both the accepted initial attempt and its retry, then propose one missing test linked to both evidence records. Do not approve it for me. Do not claim a duplicate charge without evidence.` Confirm that it discovers the page tools, reads the snapshot, returns `netev_response_016` and `netev_retry_017`, and links both to pending test proposal `P-017`.
 4. Confirm that verification is rejected before approval, then click **Approve test** as the human.
-5. Ask the agent to run the approved test first with `targeted_retry`, then with `seeded_monkey`, seed `37`, and `maxSteps: 20`. Confirm both results are linked to `P-017` and display `RISK CONFIRMED` for this fixture.
+5. Ask the agent to read the snapshot again after approval, use the returned state version `14`, then run the approved test first with `targeted_retry` and next with `seeded_monkey`, seed `37`, and `maxSteps: 20`. Confirm both results are linked to `P-017` and display `RISK CONFIRMED` for this fixture.
 6. Ask the agent to propose a release decision linked to `V-002`. Confirm that HOLD is only a proposal and the header remains UNDECIDED.
 7. Click **Confirm HOLD**, then inspect the activity trail for the attributed state sequence.
 
-The repository currently reports 83 automated tests. The production build, Playwright path, and dependency audit pass as local release gates. On 2026-08-28, ChatGPT's in-app browser discovered all five tools on the earlier Release Room-only production build and completed the approval, targeted replay, seeded monkey, decision, persistence, idempotency, stale-state, and out-of-bounds-input checks with zero console errors. The new `/checkout` handoff must be recertified after deployment before this draft is submitted.
+The repository currently reports 83 automated tests. The production build, Playwright path, and dependency audit pass as local release gates. The two-route production build is live, and ChatGPT's in-app browser discovered all five tools on the canonical URL. The earlier Release Room-only production build completed the approval, targeted replay, seeded monkey, decision, persistence, idempotency, stale-state, and out-of-bounds-input checks with zero console errors. A clean-state native `/checkout` handoff must still be recertified before this draft is submitted.
 
 Use **Reset demo** before repeating the flow. No login or credentials are required.
 

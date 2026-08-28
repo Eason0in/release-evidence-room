@@ -40,7 +40,7 @@ The agent reads evidence, drafts proposals, and may run a synthetic verification
 - TypeScript/Vite build passes; npm audit reports zero high-severity vulnerabilities.
 - The Playwright `/checkout` → evidence handoff → five-tool → human-confirmed `HOLD` integration path passes and is explicitly a WebMCP host test double.
 - The earlier Release Room-only production build passed native five-tool acceptance on 2026-08-28 in ChatGPT's in-app browser.
-- The new `/checkout` handoff awaits canonical deployment and production-native recertification.
+- The two-route build is deployed, and canonical native discovery returns all five tools. A clean-state native `/checkout` handoff-to-HOLD recertification remains pending.
 - The public YouTube demo remains the final submission artifact.
 
 `risk_confirmed` means the bounded synthetic fixture reproduced the modeled failure. `not_reproduced` means only that one bounded run did not reproduce it; it is not proof that a live-system bug is absent.
@@ -48,6 +48,7 @@ The agent reads evidence, drafts proposals, and may run a synthetic verification
 ## Documentation
 
 - README: https://github.com/Eason0in/release-evidence-room#readme
+- Judge walkthrough (review branch): https://github.com/Eason0in/release-evidence-room/blob/docs/judge-walkthrough-review/docs/judge-walkthrough.md
 - Validation: https://github.com/Eason0in/release-evidence-room/blob/master/docs/validation.md
 - Scoring plan: https://github.com/Eason0in/release-evidence-room/blob/master/docs/scoring.md
 - GEO guide: https://github.com/Eason0in/release-evidence-room/blob/master/docs/geo.md
