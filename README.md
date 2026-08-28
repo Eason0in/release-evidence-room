@@ -12,7 +12,7 @@ The fixture is deliberately synthetic. It models a mobile checkout retry where o
 
 | Resource | Link | Status |
 | --- | --- | --- |
-| Live application | <https://release-evidence-room.vercel.app/> | No login; free to inspect |
+| Live application | <https://release-evidence-room.vercel.app/> | Production deployed; native WebMCP verified 2026-08-28 |
 | Source repository | <https://github.com/Eason0in/release-evidence-room> | Public MIT-licensed source |
 | Demo video | YouTube link pending final native-WebMCP capture | Local integration preview is not submission evidence |
 | Challenge | [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/) | Submission materials are English |
@@ -106,16 +106,17 @@ See [the validation record](docs/validation.md) for the separation between autom
 
 ## Native WebMCP acceptance
 
-The native gate is separate from the Playwright test double. Before submission, use the production URL in ChatGPT's in-app browser or WebMCP-enabled Chrome and verify:
+**Passed on 2026-08-28** against the canonical production URL in ChatGPT's in-app browser. This gate is separate from the Playwright test double. The production session verified:
 
-1. Discovery returns exactly the five tool names listed above.
-2. All five tools execute in order after `Reset demo`, with human approval before verification.
-3. Replaying a proposal with the same `clientRequestId` creates no duplicate.
-4. A stale `expectedStateVersion` returns `state_conflict` without mutation.
-5. The agent cannot approve a test, run unapproved or live-system tests, confirm a decision, or deploy.
-6. Human controls and the versioned audit trail visibly reflect the native calls.
+1. Discovery returned exactly the five tool names listed above.
+2. Verification was rejected before the human approved `P-017`.
+3. `targeted_retry` produced `V-001` with `risk_confirmed`, two steps, different retry keys, and two modeled side effects.
+4. `seeded_monkey` with seed `37` and `maxSteps: 20` produced `V-002` with `risk_confirmed` after four steps.
+5. A `READY` proposal linked to a confirmed risk was rejected; a verification-linked `HOLD` remained pending until the human confirmed it.
+6. Exact request replay returned the original result without duplication, and a stale state version returned `state_conflict` without mutation.
+7. Reload restored state version `18`, the human `HOLD`, and both verification results; the browser reported zero console errors.
 
-The current branch contains a compatibility fallback for hosts that omit the optional execute-callback options object. Production native evidence must be refreshed after this branch is deployed.
+The production run also rejected the out-of-bounds input `maxSteps: 101`. See [the validation record](docs/validation.md) for exact state transitions and intentionally untested behavior. The only remaining submission artifact is the final public YouTube demo; the local deterministic recording is still not native evidence.
 
 ## Demo and voiceover assets
 

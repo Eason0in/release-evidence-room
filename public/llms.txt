@@ -39,7 +39,9 @@ The agent reads evidence, drafts proposals, and may run a synthetic verification
 - 69 automated tests pass locally.
 - TypeScript/Vite build passes; npm audit reports zero high-severity vulnerabilities.
 - Playwright integration path passes and is explicitly a test double.
-- Production native WebMCP discovery and the public YouTube demo remain final submission gates.
+- Production-native WebMCP discovery and the complete five-tool flow passed on 2026-08-28 in ChatGPT's in-app browser.
+- The native run verified both bounded strategies, human-only approval and final confirmation, idempotent replay, stale-state rejection, persistence reload, and zero console errors.
+- The public YouTube demo remains the final submission artifact.
 
 `risk_confirmed` means the bounded synthetic fixture reproduced the modeled failure. `not_reproduced` means only that one bounded run did not reproduce it; it is not proof that a live-system bug is absent.
 
