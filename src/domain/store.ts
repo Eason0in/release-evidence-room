@@ -213,6 +213,58 @@ function isConsistentState(state: ReleaseState): boolean {
         ? fingerprintTestCase(proposal)
         : fingerprintReleaseDecision(proposal);
     if (proposal.requestFingerprint !== expectedFingerprint) return false;
+
+    const proposalAction =
+      proposal.kind === "test_case"
+        ? "proposed_test_case"
+        : "proposed_release_decision";
+    const proposalEntries = state.activity.filter(
+      (entry) =>
+        entry.actor === "agent" &&
+        entry.action === proposalAction &&
+        entry.clientRequestId === proposal.clientRequestId &&
+        entry.summary.startsWith(`${proposal.proposalId} `),
+    );
+    if (proposalEntries.length !== 1) return false;
+
+    const reviewEntries = state.activity.filter(
+      (entry) =>
+        entry.actor === "human" &&
+        entry.summary.startsWith(`${proposal.proposalId} was `),
+    );
+    if (proposal.kind === "test_case") {
+      const expectedAction =
+        proposal.status === "approved"
+          ? "approved_test_case"
+          : proposal.status === "rejected"
+            ? "rejected_test_case"
+            : undefined;
+      if (
+        reviewEntries.length !== (expectedAction ? 1 : 0) ||
+        (expectedAction && reviewEntries[0]?.action !== expectedAction) ||
+        (expectedAction &&
+          proposalEntries[0].sequence >= reviewEntries[0]!.sequence)
+      ) {
+        return false;
+      }
+    } else {
+      const expectedAction =
+        proposal.status === "confirmed"
+          ? proposal.recommendation === "ready"
+            ? "confirmed_release_ready"
+            : "confirmed_release_hold"
+          : proposal.status === "rejected"
+            ? "rejected_release_decision"
+            : undefined;
+      if (
+        reviewEntries.length !== (expectedAction ? 1 : 0) ||
+        (expectedAction && reviewEntries[0]?.action !== expectedAction) ||
+        (expectedAction &&
+          proposalEntries[0].sequence >= reviewEntries[0]!.sequence)
+      ) {
+        return false;
+      }
+    }
   }
 
   for (const verification of state.verifications) {
@@ -284,20 +336,21 @@ function isConsistentState(state: ReleaseState): boolean {
     }
   }
 
-  if (state.activity.some((entry, index) => {
+  let auditVersion = 12;
+  for (const [index, entry] of state.activity.entries()) {
     const isRead =
       entry.action === "read_release_snapshot" ||
       entry.action === "queried_network_evidence";
-    return (
+    if (
       entry.sequence !== index + 1 ||
-      entry.toVersion > state.stateVersion ||
-      (isRead
-        ? entry.fromVersion !== entry.toVersion
-        : entry.toVersion !== entry.fromVersion + 1)
-    );
-  })) {
-    return false;
+      entry.fromVersion !== auditVersion ||
+      (isRead ? entry.toVersion !== auditVersion : entry.toVersion !== auditVersion + 1)
+    ) {
+      return false;
+    }
+    if (!isRead) auditVersion += 1;
   }
+  if (state.stateVersion !== auditVersion) return false;
 
   const confirmed = state.proposals.filter(
     (proposal) => proposal.kind === "release_decision" && proposal.status === "confirmed",
@@ -351,7 +404,12 @@ function isReleaseState(value: unknown): value is ReleaseState {
   if (
     !Number.isInteger(value.tests.total) ||
     !Number.isInteger(value.tests.passed) ||
-    !Number.isInteger(value.tests.failed)
+    !Number.isInteger(value.tests.failed) ||
+    Number(value.tests.total) < 0 ||
+    Number(value.tests.passed) < 0 ||
+    Number(value.tests.failed) < 0 ||
+    Number(value.tests.passed) + Number(value.tests.failed) !==
+      Number(value.tests.total)
   ) {
     return false;
   }
