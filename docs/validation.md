@@ -6,7 +6,7 @@ This record separates deterministic integration evidence from native WebMCP evid
 
 | Layer | Command | Current result |
 | --- | --- | --- |
-| Checkout state machine, evidence handoff, domain, verifier, persistence, components, WebMCP adapter, and Inworld helper | `npm test` | **83 tests passed** |
+| Checkout state machine, evidence handoff, domain, verifier, persistence, components, WebMCP adapter, and Inworld helper | `npm test` | **88 tests passed** |
 | TypeScript and production bundle | `npm run build` | Passed |
 | Dependency audit | `npm audit --audit-level=high` | 0 vulnerabilities |
 | Full `/checkout` evidence handoff, proposal, verification, and human-confirmation browser path | `npm run test:e2e` | 1 Playwright test passed |

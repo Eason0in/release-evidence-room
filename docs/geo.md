@@ -38,7 +38,7 @@ GEO here means making the project easy for search engines and answer engines to 
 
 ## Verification status
 
-- 83 automated tests pass locally.
+- 88 automated tests pass locally.
 - TypeScript and Vite production build pass.
 - Playwright `/checkout` evidence handoff, proposal, verification, and human-confirmation path passes.
 - `npm audit --audit-level=high` reports zero vulnerabilities.

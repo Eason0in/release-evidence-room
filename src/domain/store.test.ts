@@ -99,6 +99,90 @@ describe("release room store", () => {
     });
   });
 
+  it("fails closed when persisted test totals are impossible", () => {
+    const fixture = createDemoReleaseState();
+    localStorage.setItem(
+      RELEASE_ROOM_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: "release-evidence-room/v3",
+        state: {
+          ...fixture,
+          tests: { total: 17, passed: 18, failed: -1 },
+        },
+      }),
+    );
+
+    expect(createReleaseRoomStore(localStorage).getState()).toEqual(fixture);
+  });
+
+  it("fails closed when the persisted state version does not match its audit chain", () => {
+    const fixture = createDemoReleaseState();
+    localStorage.setItem(
+      RELEASE_ROOM_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: "release-evidence-room/v3",
+        state: { ...fixture, stateVersion: 999 },
+      }),
+    );
+
+    expect(createReleaseRoomStore(localStorage).getState()).toEqual(fixture);
+  });
+
+  it("fails closed when a test is marked approved without a human audit event", () => {
+    const fixture = createDemoReleaseState();
+    const proposed = proposeTestCase(fixture, proposalInput);
+    expect(proposed.ok).toBe(true);
+    if (!proposed.ok) return;
+    const tampered = {
+      ...proposed.state,
+      proposals: proposed.state.proposals.map((proposal) =>
+        proposal.kind === "test_case"
+          ? { ...proposal, status: "approved" as const }
+          : proposal,
+      ),
+    };
+    localStorage.setItem(
+      RELEASE_ROOM_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: "release-evidence-room/v3",
+        state: tampered,
+      }),
+    );
+
+    expect(createReleaseRoomStore(localStorage).getState()).toEqual(fixture);
+  });
+
+  it("fails closed when human approval has no earlier matching proposal event", () => {
+    const fixture = createDemoReleaseState();
+    const proposed = proposeTestCase(fixture, proposalInput);
+    expect(proposed.ok).toBe(true);
+    if (!proposed.ok) return;
+    const tampered = {
+      ...proposed.state,
+      proposals: [{ ...proposed.value, status: "approved" as const }],
+      activity: [
+        {
+          eventId: "A-001",
+          sequence: 1,
+          actor: "human" as const,
+          action: "approved_test_case" as const,
+          summary: "P-017 was approved by a human.",
+          fromVersion: 12,
+          toVersion: 13,
+        },
+      ],
+    };
+    localStorage.setItem(
+      RELEASE_ROOM_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: "release-evidence-room/v3",
+        state: tampered,
+      }),
+    );
+
+    expect(createReleaseRoomStore(localStorage).getState()).toEqual(fixture);
+  });
+
   it.each([
     ["network evidence phase", (state: ReturnType<typeof createDemoReleaseState>) => ({
       ...state,

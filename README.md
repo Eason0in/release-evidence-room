@@ -2,7 +2,7 @@
 
 **A privacy-safe WebMCP release review room where an agent builds the evidence case and a human makes the release decision.**
 
-> **Runtime scenario:** the public Checkout QA Sandbox generates a response-loss retry trace, then hands that exact browser-local session to the Release Evidence Room. **Repository verification:** 83 automated tests pass. **Deployment status:** the two-route build is live; production-native discovery has been rechecked, while a clean-state native checkout-to-HOLD recertification remains pending.
+> **Runtime scenario:** the public Checkout QA Sandbox generates a response-loss retry trace, then hands that exact browser-local session to the Release Evidence Room. **Repository verification:** 88 automated tests pass. **Deployment status:** the two-route build is live; production-native discovery has been rechecked, while a clean-state native checkout-to-HOLD recertification remains pending.
 
 Release Evidence Room is a two-route React and TypeScript WebMCP demo for a realistic release-engineering problem: a green test suite can still hide a payment-retry risk. The public `/checkout` route is a fictional test target that generates a real runtime trace without an account, card, backend, or payment. It writes a versioned synthetic evidence session that the release room at `/` then reads. The agent can inspect that bounded evidence, draft proposals, and—only after human approval—run the approved scenario inside the same checkout model. Only the human can approve a test proposal or confirm the final `READY` / `HOLD` decision.
 
@@ -101,7 +101,7 @@ npm audit --audit-level=high
 
 Current local evidence:
 
-- 83 Vitest tests pass across the checkout state machine, evidence handoff, domain, verifier, persistence, components, WebMCP handlers, and the Inworld helper.
+- 88 Vitest tests pass across the checkout state machine, evidence handoff, domain, verifier, persistence, components, WebMCP handlers, and the Inworld helper.
 - TypeScript and the Vite production build pass.
 - The Playwright `/checkout` → evidence handoff → five-tool proposal → human-confirmed `HOLD` path passes.
 - The dependency audit reports zero high-severity vulnerabilities.
@@ -143,6 +143,7 @@ The final challenge video must be an English-audio, public YouTube video under t
 - Evidence exposes opaque references only; it does not expose raw hosts, paths, queries, headers, bodies, cookies, addresses, timestamps, or local file paths.
 - Verification is limited to a deterministic, page-owned synthetic ledger. There is no arbitrary-code, live-system test-execution, or deployment tool and no autonomous approval path.
 - The public Checkout QA Sandbox and Release Evidence Room share browser-local state on the same origin. This is a real demo integration, but it is not a remote commerce backend or production payment system.
+- Same-browser tabs adopt storage events, but simultaneous same-version writers are not serialized. Use one Release Room writer during a review; multi-user concurrency remains out of scope.
 - Opening `/` directly uses a clearly labeled deterministic fixture. A `CHECKOUT RUNTIME` label appears only after a completed `/checkout` session is handed off. An in-progress review cannot be silently replaced.
 - `risk_confirmed` means the bounded fixture reproduced the modeled failure; `not_reproduced` means only that the bounded run did not reproduce it. Neither is a universal correctness claim.
 - The project does not claim packet capture or packet-content analysis; the fixture represents already-sanitized page-owned evidence.

@@ -36,7 +36,7 @@ The agent reads evidence, drafts proposals, and may run a synthetic verification
 
 ## Verification status
 
-- 83 automated tests pass locally.
+- 88 automated tests pass locally.
 - TypeScript/Vite build passes; npm audit reports zero high-severity vulnerabilities.
 - The Playwright `/checkout` → evidence handoff → five-tool → human-confirmed `HOLD` integration path passes and is explicitly a WebMCP host test double.
 - The earlier Release Room-only production build passed native five-tool acceptance on 2026-08-28 in ChatGPT's in-app browser.

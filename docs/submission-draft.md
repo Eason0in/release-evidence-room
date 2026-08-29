@@ -52,7 +52,7 @@ The complete judge-oriented walkthrough, including the reason and expected resul
 6. Ask the agent to propose a release decision linked to `V-002`. Confirm that HOLD is only a proposal and the header remains UNDECIDED.
 7. Click **Confirm HOLD**, then inspect the activity trail for the attributed state sequence.
 
-The repository currently reports 83 automated tests. The production build, Playwright path, and dependency audit pass as local release gates. The two-route production build is live, and ChatGPT's in-app browser discovered all five tools on the canonical URL. The earlier Release Room-only production build completed the approval, targeted replay, seeded monkey, decision, persistence, idempotency, stale-state, and out-of-bounds-input checks with zero console errors. A clean-state native `/checkout` handoff must still be recertified before this draft is submitted.
+The repository currently reports 88 automated tests. The production build, Playwright path, and dependency audit pass as local release gates. The two-route production build is live, and ChatGPT's in-app browser discovered all five tools on the canonical URL. The earlier Release Room-only production build completed the approval, targeted replay, seeded monkey, decision, persistence, idempotency, stale-state, and out-of-bounds-input checks with zero console errors. A clean-state native `/checkout` handoff must still be recertified before this draft is submitted.
 
 Use **Reset demo** before repeating the flow. No login or credentials are required.
 

@@ -1,4 +1,12 @@
-import { createDemoReleaseState } from "./evidence";
+import {
+  createDemoReleaseState,
+  createReleaseStateFromCheckoutSession,
+} from "./evidence";
+import {
+  createCheckoutSession,
+  retryPayment,
+  submitPaymentWithLostResponse,
+} from "../checkout/sandbox";
 import { runSyntheticVerification } from "./verification";
 
 describe("synthetic verification", () => {
@@ -20,19 +28,12 @@ describe("synthetic verification", () => {
   });
 
   it("reports not reproduced when the retry reuses one stable key", () => {
-    const state = createDemoReleaseState();
-    const stableState = {
-      ...state,
-      networkEvidence: state.networkEvidence.map((item) =>
-        item.phase === "retry_attempt"
-          ? {
-              ...item,
-              operationRefs: ["op_01"],
-              idempotencyKeyRefs: ["idem_7f3c"],
-            }
-          : item,
+    const stableState = createReleaseStateFromCheckoutSession(
+      retryPayment(
+        submitPaymentWithLostResponse(createCheckoutSession()),
+        "reuse_key",
       ),
-    };
+    );
 
     const result = runSyntheticVerification(stableState, {
       strategy: "targeted_retry",
@@ -49,7 +50,7 @@ describe("synthetic verification", () => {
     });
   });
 
-  it("counts operation refs instead of treating a stable key as one side effect", () => {
+  it("stays inconclusive when evidence claims a stable key across distinct operations", () => {
     const state = createDemoReleaseState();
     const stableKeyWithTwoOperations = {
       ...state,
@@ -66,16 +67,12 @@ describe("synthetic verification", () => {
     });
 
     expect(result).toMatchObject({
-      verdict: "risk_confirmed",
-      observedSideEffects: 2,
-      assertions: [
-        { name: "stable_retry_key", passed: true },
-        { name: "single_side_effect", passed: false },
-      ],
+      verdict: "inconclusive",
+      assertions: [],
     });
   });
 
-  it("does not clear the risk when one operation was observed under different keys", () => {
+  it("stays inconclusive when evidence claims different keys for one operation", () => {
     const state = createDemoReleaseState();
     const oneOperationWithDifferentKeys = {
       ...state,
@@ -92,11 +89,32 @@ describe("synthetic verification", () => {
     });
 
     expect(result).toMatchObject({
-      verdict: "risk_confirmed",
-      observedSideEffects: 1,
-      assertions: [
-        { name: "stable_retry_key", passed: false },
-        { name: "single_side_effect", passed: true },
+      verdict: "inconclusive",
+      assertions: [],
+    });
+  });
+
+  it("replays the checkout model instead of trusting forged operation references", () => {
+    const state = createDemoReleaseState();
+    const forged = {
+      ...state,
+      networkEvidence: state.networkEvidence.map((item) =>
+        item.phase === "retry_attempt"
+          ? { ...item, operationRefs: ["forged_01", "forged_02"] }
+          : item,
+      ),
+    };
+
+    const result = runSyntheticVerification(forged, {
+      strategy: "targeted_retry",
+      evidenceIds: ["netev_retry_017", "netev_response_016"],
+    });
+
+    expect(result).toMatchObject({
+      verdict: "inconclusive",
+      trace: [
+        "1:initial_attempt:idem_7f3c:op_01",
+        "2:retry_attempt:idem_b15a:op_02",
       ],
     });
   });
