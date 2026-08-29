@@ -63,7 +63,14 @@ describe("WebMCP tools", () => {
       description: expect.stringMatching(/retry identical content/i),
     });
     expect(releaseToolSchemas.testCase.properties.expectedStateVersion).toMatchObject({
+      maximum: Number.MAX_SAFE_INTEGER,
       description: expect.stringMatching(/latest get_release_snapshot/i),
+    });
+    expect(releaseToolSchemas.verification.properties.expectedStateVersion).toMatchObject({
+      maximum: Number.MAX_SAFE_INTEGER,
+    });
+    expect(releaseToolSchemas.releaseDecision.properties.expectedStateVersion).toMatchObject({
+      maximum: Number.MAX_SAFE_INTEGER,
     });
     expect(releaseToolSchemas.testCase.properties.evidenceIds).toMatchObject({
       description: expect.stringMatching(/query_network_evidence/i),

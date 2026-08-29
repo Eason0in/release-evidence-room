@@ -2,7 +2,7 @@
 
 **A privacy-safe WebMCP release review room where an agent builds the evidence case and a human makes the release decision.**
 
-> **Runtime scenario:** the new Checkout QA Sandbox generates a response-loss retry trace, then hands that exact browser-local session to the Release Evidence Room. **Repository verification:** 83 automated tests pass. **Deployment status:** the two-route flow is verified locally and awaits production deployment and native recertification.
+> **Runtime scenario:** the public Checkout QA Sandbox generates a response-loss retry trace, then hands that exact browser-local session to the Release Evidence Room. **Repository verification:** 88 automated tests pass. **Deployment status:** the two-route build is live; production-native discovery has been rechecked, while a clean-state native checkout-to-HOLD recertification remains pending.
 
 Release Evidence Room is a two-route React and TypeScript WebMCP demo for a realistic release-engineering problem: a green test suite can still hide a payment-retry risk. The public `/checkout` route is a fictional test target that generates a real runtime trace without an account, card, backend, or payment. It writes a versioned synthetic evidence session that the release room at `/` then reads. The agent can inspect that bounded evidence, draft proposals, and—only after human approval—run the approved scenario inside the same checkout model. Only the human can approve a test proposal or confirm the final `READY` / `HOLD` decision.
 
@@ -12,8 +12,9 @@ The fixture is deliberately synthetic. It models a mobile checkout retry where o
 
 | Resource | Link | Status |
 | --- | --- | --- |
-| Live application | <https://release-evidence-room.vercel.app/> | Existing Release Room is deployed; the new two-route build is pending deployment |
-| Checkout QA Sandbox | <https://release-evidence-room.vercel.app/checkout> | Pending deployment on this branch; fictional and browser-local, with no account, card, backend, or real payment |
+| Live application | <https://release-evidence-room.vercel.app/> | Two-route production build is deployed |
+| Checkout QA Sandbox | <https://release-evidence-room.vercel.app/checkout> | Live fictional test target; no account, card, backend, or real payment |
+| Judge walkthrough | [docs/judge-walkthrough.md](docs/judge-walkthrough.md) | Exact actions, reasons, prompts, and expected results |
 | Source repository | <https://github.com/Eason0in/release-evidence-room> | Public MIT-licensed source |
 | Demo video | YouTube link pending final native-WebMCP capture | Local integration preview is not submission evidence |
 | Challenge | [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/) | Submission materials are English |
@@ -48,7 +49,7 @@ The product moment is the mismatch between **green tests** and **unproven retry 
 | Execute code or call a live test system | No | No tool exists |
 | Deploy or release | No | No tool exists |
 
-Every mutation requires a current `stateVersion`; proposal and verification retries also require a reusable `clientRequestId`. A stale version returns `state_conflict` without mutation. Replaying the same request ID returns the original result without creating a duplicate proposal or verification. Once a human confirms a decision, a second confirmation is rejected fail-closed.
+Every agent proposal and verification request requires the current `expectedStateVersion`; retries also require a reusable `clientRequestId`. A stale version returns `state_conflict` without a versioned mutation. Snapshot and evidence-query calls instead append audit/focus state without advancing `stateVersion`. Replaying the same request ID returns the original result without creating a duplicate proposal or verification. Once a human confirms a decision, a second confirmation is rejected fail-closed.
 
 ## WebMCP tools
 
@@ -100,7 +101,7 @@ npm audit --audit-level=high
 
 Current local evidence:
 
-- 83 Vitest tests pass across the checkout state machine, evidence handoff, domain, verifier, persistence, components, WebMCP handlers, and the Inworld helper.
+- 88 Vitest tests pass across the checkout state machine, evidence handoff, domain, verifier, persistence, components, WebMCP handlers, and the Inworld helper.
 - TypeScript and the Vite production build pass.
 - The Playwright `/checkout` → evidence handoff → five-tool proposal → human-confirmed `HOLD` path passes.
 - The dependency audit reports zero high-severity vulnerabilities.
@@ -110,7 +111,9 @@ See [the validation record](docs/validation.md) for the separation between autom
 
 ## Native WebMCP acceptance
 
-**Current two-route status: pending production deployment and recertification.** The earlier Release Room-only build passed native acceptance on 2026-08-28 against the canonical production URL in ChatGPT's in-app browser. That historical gate is separate from the Playwright test double and verified:
+**Current two-route status: deployed; clean-state native recertification pending.** On 2026-08-28, the canonical production URL returned both routes, registered exactly five tools in ChatGPT's in-app browser, preserved the prior v2 HOLD and audit through migration, and blocked a new checkout handoff from overwriting that active review. A fresh browser-local checkout-to-HOLD rerun is still required before claiming complete two-route native acceptance.
+
+The earlier Release Room-only build passed the remaining native tool-flow checks on 2026-08-28:
 
 1. Discovery returned exactly the five tool names listed above.
 2. Verification was rejected before the human approved `P-017`.
@@ -120,7 +123,7 @@ See [the validation record](docs/validation.md) for the separation between autom
 6. Exact request replay returned the original result without duplication, and a stale state version returned `state_conflict` without mutation.
 7. Reload restored state version `18`, the human `HOLD`, and both verification results; the browser reported zero console errors.
 
-The historical production run also rejected the out-of-bounds input `maxSteps: 101`. It does not certify the newly added `/checkout` handoff, provenance label, overwrite guard, or cross-tab synchronization. See [the validation record](docs/validation.md) for exact state transitions and the required recertification script. The final public YouTube demo remains pending.
+The historical production run also rejected the out-of-bounds input `maxSteps: 101`. See [the validation record](docs/validation.md) for the exact separation between current deployment checks, historical native evidence, automated evidence, and the remaining recertification step. The final public YouTube demo remains pending.
 
 ## Demo and voiceover assets
 
@@ -140,12 +143,14 @@ The final challenge video must be an English-audio, public YouTube video under t
 - Evidence exposes opaque references only; it does not expose raw hosts, paths, queries, headers, bodies, cookies, addresses, timestamps, or local file paths.
 - Verification is limited to a deterministic, page-owned synthetic ledger. There is no arbitrary-code, live-system test-execution, or deployment tool and no autonomous approval path.
 - The public Checkout QA Sandbox and Release Evidence Room share browser-local state on the same origin. This is a real demo integration, but it is not a remote commerce backend or production payment system.
+- Same-browser tabs adopt storage events, but simultaneous same-version writers are not serialized. Use one Release Room writer during a review; multi-user concurrency remains out of scope.
 - Opening `/` directly uses a clearly labeled deterministic fixture. A `CHECKOUT RUNTIME` label appears only after a completed `/checkout` session is handed off. An in-progress review cannot be silently replaced.
 - `risk_confirmed` means the bounded fixture reproduced the modeled failure; `not_reproduced` means only that the bounded run did not reproduce it. Neither is a universal correctness claim.
 - The project does not claim packet capture or packet-content analysis; the fixture represents already-sanitized page-owned evidence.
 
 ## Challenge materials
 
+- [Judge walkthrough](docs/judge-walkthrough.md)
 - [Implementation and acceptance plan](docs/implementation-plan.md)
 - [Validation record](docs/validation.md)
 - [Scoring and improvement plan](docs/scoring.md)

@@ -5,6 +5,13 @@ import type {
   VerificationStrategy,
   VerificationVerdict,
 } from "./evidence";
+import {
+  createCheckoutSession,
+  retryPayment,
+  submitPaymentWithLostResponse,
+  type CheckoutAttempt,
+  type CheckoutSession,
+} from "../checkout/sandbox";
 
 export interface SyntheticVerificationResult {
   readonly strategy: VerificationStrategy;
@@ -54,18 +61,6 @@ function inconclusive(
   };
 }
 
-function attemptKey(item: NetworkEvidence): string | undefined {
-  return item.phase === "initial_attempt"
-    ? item.idempotencyKeyRefs[0]
-    : item.idempotencyKeyRefs.at(-1);
-}
-
-function attemptOperation(item: NetworkEvidence): string | undefined {
-  return item.phase === "initial_attempt"
-    ? item.operationRefs[0]
-    : item.operationRefs.at(-1);
-}
-
 function evidenceAttempts(
   state: ReleaseState,
   input: SyntheticVerificationInput,
@@ -104,35 +99,82 @@ function assertionsFor(
   ];
 }
 
+function replayCheckoutModel(state: ReleaseState): CheckoutSession {
+  return retryPayment(
+    submitPaymentWithLostResponse(createCheckoutSession()),
+    state.evidenceSession.retryMode,
+  );
+}
+
+function replayAttempts(
+  session: CheckoutSession,
+): readonly [CheckoutAttempt, CheckoutAttempt] | undefined {
+  const initial = session.attempts.find(
+    (attempt) => attempt.phase === "initial_attempt",
+  );
+  const retry = session.attempts.find(
+    (attempt) => attempt.phase === "retry_attempt",
+  );
+  return initial && retry ? [initial, retry] : undefined;
+}
+
+function replayTrace(
+  attempts: readonly [CheckoutAttempt, CheckoutAttempt],
+): readonly string[] {
+  return attempts.map(
+    (attempt, index) =>
+      `${index + 1}:${attempt.phase}:${attempt.idempotencyKeyRef}:${attempt.operationRef}`,
+  );
+}
+
+function evidenceMatchesReplay(
+  evidence: readonly [NetworkEvidence, NetworkEvidence],
+  replay: readonly [CheckoutAttempt, CheckoutAttempt],
+): boolean {
+  return (
+    JSON.stringify(evidence[0].idempotencyKeyRefs) ===
+      JSON.stringify([replay[0].idempotencyKeyRef]) &&
+    JSON.stringify(evidence[0].operationRefs) ===
+      JSON.stringify([replay[0].operationRef]) &&
+    JSON.stringify(evidence[1].idempotencyKeyRefs) ===
+      JSON.stringify(replay.map((attempt) => attempt.idempotencyKeyRef)) &&
+    JSON.stringify(evidence[1].operationRefs) ===
+      JSON.stringify(replay.map((attempt) => attempt.operationRef))
+  );
+}
+
 function runTargetedRetry(
   state: ReleaseState,
   input: TargetedVerificationInput,
 ): SyntheticVerificationResult {
-  const attempts = evidenceAttempts(state, input);
-  if (!attempts) {
+  const evidence = evidenceAttempts(state, input);
+  if (!evidence) {
     return inconclusive(
       input,
       "Both an accepted initial attempt and its retry are required.",
     );
   }
 
-  const keys = attempts.map(attemptKey);
-  if (!keys[0] || !keys[1]) {
+  const session = replayCheckoutModel(state);
+  const attempts = replayAttempts(session);
+  if (!attempts) {
     return inconclusive(
       input,
-      "Each attempt requires an idempotency key reference.",
+      "The checkout model did not complete both retry attempts.",
+    );
+  }
+  const trace = replayTrace(attempts);
+  if (!evidenceMatchesReplay(evidence, attempts)) {
+    return inconclusive(
+      input,
+      "The selected evidence does not match the checkout model replay.",
+      trace,
+      session.observedSideEffects,
     );
   }
 
-  const operations = attempts.map(attemptOperation);
-  if (!operations[0] || !operations[1]) {
-    return inconclusive(
-      input,
-      "Each attempt requires an operation reference.",
-    );
-  }
-
-  const observedSideEffects = new Set(operations).size;
+  const keys = attempts.map((attempt) => attempt.idempotencyKeyRef);
+  const observedSideEffects = session.observedSideEffects;
   const assertions = assertionsFor(keys[0], keys[1], observedSideEffects);
   const allAssertionsPassed = assertions.every((assertion) => assertion.passed);
   return {
@@ -141,10 +183,7 @@ function runTargetedRetry(
     observedSideEffects,
     executedSteps: attempts.length,
     assertions,
-    trace: attempts.map(
-      (attempt, index) =>
-        `${index + 1}:${attempt.phase}:${keys[index]}:${operations[index]}`,
-    ),
+    trace,
     summary: allAssertionsPassed
       ? "The bounded retry replay reused one key and produced one side effect."
       : `The bounded retry replay observed ${keys[0] === keys[1] ? "one stable key" : "different keys"} and ${observedSideEffects} side effect(s).`,
@@ -163,33 +202,36 @@ function runSeededMonkey(
   state: ReleaseState,
   input: MonkeyVerificationInput,
 ): SyntheticVerificationResult {
-  const attempts = evidenceAttempts(state, input);
-  if (!attempts) {
+  const evidence = evidenceAttempts(state, input);
+  if (!evidence) {
     return inconclusive(
       input,
       "Both an accepted initial attempt and its retry are required.",
     );
   }
-  const initialKey = attemptKey(attempts[0]);
-  const retryKey = attemptKey(attempts[1]);
-  if (!initialKey || !retryKey) {
+  const expectedSession = replayCheckoutModel(state);
+  const expectedAttempts = replayAttempts(expectedSession);
+  if (!expectedAttempts) {
     return inconclusive(
       input,
-      "Each attempt requires an idempotency key reference.",
+      "The checkout model did not complete both retry attempts.",
     );
   }
-  const initialOperation = attemptOperation(attempts[0]);
-  const retryOperation = attemptOperation(attempts[1]);
-  if (!initialOperation || !retryOperation) {
+  if (!evidenceMatchesReplay(evidence, expectedAttempts)) {
     return inconclusive(
       input,
-      "Each attempt requires an operation reference.",
+      "The selected evidence does not match the checkout model replay.",
+      replayTrace(expectedAttempts),
+      expectedSession.observedSideEffects,
     );
   }
 
+  const initialKey = expectedAttempts[0].idempotencyKeyRef;
+  const retryKey = expectedAttempts[1].idempotencyKeyRef;
+
   const random = seededRandom(input.seed);
-  const ledger = new Set<string>();
   const trace: string[] = [];
+  let session = createCheckoutSession();
   let phase: "idle" | "accepted" | "response_lost" | "resolved" = "idle";
   let retriedAfterLoss = false;
 
@@ -205,14 +247,14 @@ function runSeededMonkey(
     const action = actions[Math.floor(random() * actions.length)] as string;
 
     if (phase === "idle" && action === "submit") {
-      ledger.add(initialOperation);
+      session = submitPaymentWithLostResponse(session);
       phase = "accepted";
     } else if (phase === "accepted" && action === "lose_response") {
       phase = "response_lost";
     } else if (phase === "accepted" && action === "receive_response") {
       phase = "resolved";
     } else if (phase === "response_lost" && action === "retry") {
-      ledger.add(retryOperation);
+      session = retryPayment(session, state.evidenceSession.retryMode);
       phase = "resolved";
       retriedAfterLoss = true;
     }
@@ -225,11 +267,11 @@ function runSeededMonkey(
       input,
       "The bounded run did not reach a response-loss retry transition.",
       trace,
-      ledger.size,
+      session.observedSideEffects,
     );
   }
 
-  const observedSideEffects = ledger.size;
+  const observedSideEffects = session.observedSideEffects;
   const assertions = assertionsFor(initialKey, retryKey, observedSideEffects);
   const allAssertionsPassed = assertions.every((assertion) => assertion.passed);
   return {

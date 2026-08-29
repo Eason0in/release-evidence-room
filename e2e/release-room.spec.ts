@@ -59,7 +59,7 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
     page,
     "SIMULATED USER PROMPT",
     "Review this release candidate for payment-retry safety.",
-    "Use only evidence available in this page. Propose one missing test, but do not approve it for me.",
+    "Query both the accepted initial attempt and its retry. Propose one test linked to both records, but do not approve it for me.",
     6_000,
   );
 
@@ -86,14 +86,15 @@ test("agent proposes and a human confirms HOLD", async ({ page }) => {
   await demoToolCall(
     page,
     "query_network_evidence",
-    "Filter page-owned duplicate-side-effect evidence only.",
+    "Read both page-owned attempts required for the retry replay.",
   );
   await invokeTool(page, "query_network_evidence", {
-    riskType: "duplicate_side_effect",
-    severity: "high",
     limit: 5,
   });
   await expect(page.getByText("AGENT FOCUS")).toBeVisible();
+  await expect(page.locator('[data-evidence-id="netev_response_016"]')).toHaveClass(
+    /focused-row/,
+  );
   await expect(page.locator('[data-evidence-id="netev_retry_017"]')).toHaveClass(
     /focused-row/,
   );

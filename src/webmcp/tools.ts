@@ -76,6 +76,7 @@ export const releaseToolSchemas = {
       expectedStateVersion: {
         type: "integer",
         minimum: 0,
+        maximum: Number.MAX_SAFE_INTEGER,
         description: "Copy stateVersion from the latest get_release_snapshot result.",
       },
       clientRequestId: {
@@ -144,6 +145,7 @@ export const releaseToolSchemas = {
       expectedStateVersion: {
         type: "integer",
         minimum: 0,
+        maximum: Number.MAX_SAFE_INTEGER,
         description: "Copy stateVersion from the latest get_release_snapshot result.",
       },
       clientRequestId: {
@@ -204,6 +206,7 @@ export const releaseToolSchemas = {
       expectedStateVersion: {
         type: "integer",
         minimum: 0,
+        maximum: Number.MAX_SAFE_INTEGER,
         description: "Copy stateVersion from the latest get_release_snapshot result.",
       },
       clientRequestId: {
