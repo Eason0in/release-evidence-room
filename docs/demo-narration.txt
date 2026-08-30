@@ -1,15 +1,17 @@
-This is Release Evidence Room, a WebMCP-powered release review room. It answers a practical question: can an agent find a release risk that a green test dashboard misses, while a human keeps accountability?
+Eighteen out of eighteen release checks passed. Would you ship this payment retry build?
 
-First, the public fictional checkout target accepts a payment attempt but loses its response. Retrying the same intent with a new idempotency key creates a second operation. No real payment or backend is involved. I send that exact browser-local session into the Release Evidence Room, where eighteen of eighteen existing tests still pass.
+Release Evidence Room helps QA leads and release owners turn evidence missed by green dashboards into auditable release decisions.
 
-The prompt asks the agent to review payment-retry safety using only evidence owned by this session.
+First, this fictional checkout accepts a payment attempt but loses the response. Retrying the same intent with a new idempotency key creates a second accepted operation. No account, card, backend, or real payment is involved. I send that browser-local session into the Release Evidence Room.
 
-The agent calls get_release_snapshot to read the release and its coverage gaps, then query_network_evidence to filter the redacted retry records. One payment intent has two accepted operation references and two idempotency-key references. That is a bounded release risk, not proof of a duplicate charge.
+Inside ChatGPT's in-app browser, the page exposes five WebMCP tools to read the release snapshot, query redacted evidence, propose a test, run approved verification, and propose a release decision. The agent links both attempts to a missing response-loss test. It does not scrape the interface or claim that a customer was charged twice.
 
-Next, propose_test_case drafts a response-loss regression test linked to the evidence. The proposal appears as pending. WebMCP cannot approve it; I approve the bounded verification as the human release owner.
+The test proposal stays pending. When the agent tries to run it early, the page rejects the request. I approve the test as the human release owner.
 
-Only then can run_approved_verification execute. First, an exact retry replay uses the two sanitized attempts. Next, a seeded state-machine monkey run explores refresh, response loss, and retry with a strict step limit. Both reproduce two synthetic side effects. These results confirm the modeled risk, not a real duplicate charge.
+Only then can verification execute. The targeted replay starts from a fresh checkout-model session and reproduces two modeled side effects. A seeded monkey run, capped at twenty steps, reaches the same failure through a deterministic sequence. Both results say risk confirmed for this synthetic model, not for a live payment service.
 
-The agent links that verification to propose_release_decision. It recommends HOLD, but the header remains UNDECIDED until I click Confirm HOLD.
+The safeguards are visible too. Retrying an identical request ID replays the prior result without duplication. A stale state version is rejected instead of overwriting newer evidence.
 
-Under the hood, all five tools use strict schemas and runtime validation. State versions reject stale changes, request IDs make retries idempotent, and every read, proposal, verification, and human action is versioned in the local audit trail. There is no credential, live company system, arbitrary traffic fetch, arbitrary-code execution, approval, or deploy tool. The agent builds and tests the bounded evidence case. The human makes the release decision.
+The agent cannot turn that risk into READY, so the page rejects the attempt. It proposes HOLD, but the release header remains undecided until I confirm it.
+
+Every read, proposal, verification, and human action is attributed and versioned. No credentials or company data are exposed. Those five page tools expose no arbitrary traffic, code, approvals, or deployments. It assembles and verifies the bounded evidence case. The human makes the release decision.

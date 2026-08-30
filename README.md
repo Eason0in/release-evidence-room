@@ -2,7 +2,7 @@
 
 **A privacy-safe WebMCP release review room where an agent builds the evidence case and a human makes the release decision.**
 
-> **Runtime scenario:** the public Checkout QA Sandbox generates a response-loss retry trace, then hands that exact browser-local session to the Release Evidence Room. **Repository verification:** 88 automated tests pass. **Deployment status:** the two-route build is live; production-native discovery has been rechecked, while a clean-state native checkout-to-HOLD recertification remains pending.
+> **Runtime scenario:** the public Checkout QA Sandbox generates a response-loss retry trace, then hands that exact browser-local session to the Release Evidence Room. **Repository verification:** 88 automated tests pass. **Deployment status:** the two-route build is live, and a clean-state native checkout-to-HOLD run passed in ChatGPT's in-app browser on 2026-08-29.
 
 Release Evidence Room is a two-route React and TypeScript WebMCP demo for a realistic release-engineering problem: a green test suite can still hide a payment-retry risk. The public `/checkout` route is a fictional test target that generates a real runtime trace without an account, card, backend, or payment. It writes a versioned synthetic evidence session that the release room at `/` then reads. The agent can inspect that bounded evidence, draft proposals, and—only after human approval—run the approved scenario inside the same checkout model. Only the human can approve a test proposal or confirm the final `READY` / `HOLD` decision.
 
@@ -16,7 +16,7 @@ The fixture is deliberately synthetic. It models a mobile checkout retry where o
 | Checkout QA Sandbox | <https://release-evidence-room.vercel.app/checkout> | Live fictional test target; no account, card, backend, or real payment |
 | Judge walkthrough | [docs/judge-walkthrough.md](docs/judge-walkthrough.md) | Exact actions, reasons, prompts, and expected results |
 | Source repository | <https://github.com/Eason0in/release-evidence-room> | Public MIT-licensed source |
-| Demo video | YouTube link pending final native-WebMCP capture | Local integration preview is not submission evidence |
+| Demo video | [Release Evidence Room — Agent-Native Release Review with WebMCP](https://youtu.be/PyDhC1ju_pw) | Public 2:45 native-WebMCP walkthrough with English audio and captions |
 | Challenge | [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/) | Submission materials are English |
 
 The live URL and repository are the canonical project resources. `demo-output/` is intentionally ignored by Git so local recordings and generated audio do not become repository assets.
@@ -111,9 +111,7 @@ See [the validation record](docs/validation.md) for the separation between autom
 
 ## Native WebMCP acceptance
 
-**Current two-route status: deployed; clean-state native recertification pending.** On 2026-08-28, the canonical production URL returned both routes, registered exactly five tools in ChatGPT's in-app browser, preserved the prior v2 HOLD and audit through migration, and blocked a new checkout handoff from overwriting that active review. A fresh browser-local checkout-to-HOLD rerun is still required before claiming complete two-route native acceptance.
-
-The earlier Release Room-only build passed the remaining native tool-flow checks on 2026-08-28:
+**Current two-route status: deployed and clean-state native acceptance passed.** On 2026-08-29, the canonical production URL completed one uninterrupted `/checkout` → `CHECKOUT RUNTIME` → five-tool → human-confirmed `HOLD` run in ChatGPT's in-app browser:
 
 1. Discovery returned exactly the five tool names listed above.
 2. Verification was rejected before the human approved `P-017`.
@@ -123,17 +121,17 @@ The earlier Release Room-only build passed the remaining native tool-flow checks
 6. Exact request replay returned the original result without duplication, and a stale state version returned `state_conflict` without mutation.
 7. Reload restored state version `18`, the human `HOLD`, and both verification results; the browser reported zero console errors.
 
-The historical production run also rejected the out-of-bounds input `maxSteps: 101`. See [the validation record](docs/validation.md) for the exact separation between current deployment checks, historical native evidence, automated evidence, and the remaining recertification step. The final public YouTube demo remains pending.
+The run also preserved the final `HOLD`, state version `18`, and both verification results after reload. The historical production run separately rejected the out-of-bounds input `maxSteps: 101`. See [the validation record](docs/validation.md) for the exact separation between native, automated, and intentionally out-of-scope evidence. The final 2:45 English walkthrough passed decode, caption, checksum, privacy, and independent review before it was [published on YouTube](https://youtu.be/PyDhC1ju_pw).
 
 ## Demo and voiceover assets
 
-- [100-second final demo script](docs/demo-script.md)
+- [2:45 final demo script](docs/demo-script.md)
 - [English narration text](docs/demo-narration.txt)
 - [English submission draft](docs/submission-draft.md)
 - `npm run demo:record` — deterministic local integration recording only
 - `npm run demo:tts:inworld` — optional local Inworld WAV generation; the API key is read from `INWORLD_API_KEY` and never committed
 
-The final challenge video must be an English-audio, public YouTube video under three minutes that shows the real WebMCP-capable browser/agent interaction, the proposal boundary, human confirmation, and the audit trail. The local integration recording is for regression review and is not a substitute for that native capture.
+The [public challenge video](https://youtu.be/PyDhC1ju_pw) is an English-audio, 2:45 native-WebMCP recording that shows the real browser/agent interaction, proposal boundary, verification guards, human confirmation, and audit trail. The deterministic integration recording remains only a regression artifact and is not a substitute for the native capture.
 
 ## Privacy, scope, and limitations
 
@@ -156,5 +154,6 @@ The final challenge video must be an English-audio, public YouTube video under t
 - [Scoring and improvement plan](docs/scoring.md)
 - [GEO and AI-discovery guide](docs/geo.md)
 - [Devpost submission draft](docs/submission-draft.md)
+- [Submission readiness checklist](docs/submission-checklist.md)
 
 Released under the [MIT License](LICENSE).

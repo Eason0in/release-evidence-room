@@ -43,8 +43,8 @@ GEO here means making the project easy for search engines and answer engines to 
 - Playwright `/checkout` evidence handoff, proposal, verification, and human-confirmation path passes.
 - `npm audit --audit-level=high` reports zero vulnerabilities.
 - Deterministic recording passes but is explicitly a test double, not native WebMCP proof.
-- The earlier Release Room-only production build passed native five-tool acceptance on 2026-08-28 in ChatGPT's in-app browser.
-- The two-route build is deployed, and canonical native discovery returns all five tools. A clean-state native `/checkout` handoff-to-HOLD recertification and the public YouTube URL remain pending.
+- The deployed two-route build passed a clean-state native `/checkout` handoff, five-tool review, safety-guard, human-confirmed `HOLD`, and reload-persistence run on 2026-08-29 in ChatGPT's in-app browser.
+- The final 2:45 native-WebMCP walkthrough passed decode, captions, checksum, privacy, and independent review and is [public on YouTube](https://youtu.be/PyDhC1ju_pw).
 
 ## Claim boundaries
 
@@ -58,3 +58,4 @@ Use “synthetic,” “bounded,” “runtime checkout session,” “proposal,
 - [Scoring plan](scoring.md) — internal estimate and improvement priorities
 - [English submission draft](submission-draft.md) — four required challenge answers
 - [Final demo script](demo-script.md) — native recording sequence
+- [Public demo video](https://youtu.be/PyDhC1ju_pw) — 2:45 native-WebMCP walkthrough with English audio and captions

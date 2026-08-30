@@ -32,7 +32,7 @@ Ship a public, no-login, two-route WebMCP demo where a fictional checkout target
    - GREEN: thin adapter over the same application functions used by the UI.
    - Verify: adapter tests with a minimal fake `document.modelContext`.
 5. Judge-ready page
-   - RED: the 100-second path generates and exposes the hidden risk, drafts and verifies a regression test, and leaves the final Hold decision to a human.
+   - RED: the under-three-minute path generates and exposes the hidden risk, drafts and verifies a regression test, and leaves the final Hold decision to a human.
    - GREEN: release header, coverage, evidence explorer, proposal inbox, and activity timeline.
    - Verify: component tests, Playwright happy path, production build, and manual WebMCP smoke in a supported browser.
 
@@ -51,7 +51,7 @@ Ship a public, no-login, two-route WebMCP demo where a fictional checkout target
 
 ## Challenge delivery gates
 
-- Public source: publish `Eason0in/release-evidence-room` with the MIT license visible, complete instructions, and timestamped signed history.
+- Public source: publish `Eason0in/release-evidence-room` with the MIT license visible, complete instructions, and timestamped public history.
 - Production: deploy the static app to Vercel and verify its URL, UI, security headers, and WebMCP discovery.
 - Native runtime: use ChatGPT's in-app browser or Chrome 149+ with the WebMCP flag enabled to discover and execute all five tools.
 - Demo: record a public English-audio YouTube video under three minutes showing native WebMCP, the proposal boundary, human confirmation, and the audit trail. The local Playwright recording is only a deterministic integration artifact.
