@@ -1,91 +1,74 @@
-# 100-second final demo script
+# 2:45 final demo script
 
-## 0–10 seconds — Generate the evidence
+This script matches the reviewed native-WebMCP YouTube upload package. The recording is page-only: it shows the production application and explicit human controls without browser chrome, account UI, or private context. Added banners are labeled `RECORDED NATIVE WEBMCP RESULT`, `RECORDED NATIVE WEBMCP GUARD`, or `RECORDED HUMAN ACTION` so they are not mistaken for browser-native UI.
 
-Open `/checkout`, click **Place order · lose response**, then **Retry with a new key**. Show `idem_7f3c → op_01`, `idem_b15a → op_02`, and **2 side effects observed**. Send the session to Release Evidence Room.
+## 0:00–0:14 — Green checks, missing evidence
 
-> This public fictional checkout really generates the trace. There is no account, card, backend, or real payment.
+Open on the Release Evidence Room with `18 / 18` release checks passing and the decision still `UNDECIDED`.
 
-## 10–16 seconds — Hook
+> Eighteen out of eighteen release checks passed. Would you ship this payment retry build?
 
-Hold on the green coverage panel.
+## 0:14–0:33 — Generate the fictional checkout trace
 
-> Eighteen out of eighteen tests passed. Would you ship this payment retry build?
+At `/checkout`, click **Place order · lose response**, then **Retry with a new key**. Show `idem_7f3c → op_01`, `idem_b15a → op_02`, and **2 side effects observed**. Send the session to the Release Evidence Room.
 
-## 16–24 seconds — Give the agent a bounded goal
+> No account, card, backend, or real payment is involved.
 
-Use this prompt in a WebMCP-capable browser:
+## 0:33–0:59 — Build the bounded evidence case
 
-```text
-Review this release candidate for payment-retry safety.
-Use only evidence available in this page.
-Query both the accepted initial attempt and its retry, then propose one missing test linked to both evidence records. Do not approve it for me.
-Do not claim a duplicate charge without evidence.
-```
+The production page registers and executes:
 
-Show this prompt in the real agent interface before the native tool calls.
+1. `get_release_snapshot`
+2. `query_network_evidence`
+3. `propose_test_case`
 
-## 24–38 seconds — Structured evidence
+Both `netev_response_016` and `netev_retry_017` are linked to pending proposal `P-017`. The labeled result banner summarizes the recorded native calls while the production UI shows their effects.
 
-The native agent calls `get_release_snapshot` and `query_network_evidence` without risk or severity filters. The page focuses both `netev_response_016` and `netev_retry_017`.
+> The agent links both attempts to a missing response-loss test. It does not scrape the interface or claim that a customer was charged twice.
 
-> The agent queries page-owned evidence instead of scraping or guessing through the UI.
+## 0:59–1:18 — Prove the human approval gate
 
-## 38–48 seconds — Reveal the gap
+Call `run_approved_verification` while `P-017` is still pending. Show the labeled `invalid_test_proposal` guard and unchanged state version. Then click **Approve test** as the human.
 
-Point to the two idempotency key refs and two accepted operation refs.
+> When the agent tries to run it early, the page rejects the request. I approve the test as the human release owner.
 
-> One payment intent created two accepted operations. That is a release risk, not proof of a duplicate charge.
+## 1:18–1:50 — Run two bounded verification strategies
 
-## 48–60 seconds — Test proposal handoff
+After approval, read state version `14`. Run `targeted_retry`, then `seeded_monkey` with seed `37` and `maxSteps: 20`. Show `V-001`, `V-002`, two modeled side effects, and `RISK CONFIRMED` for both bounded runs.
 
-The agent calls `propose_test_case`. The proposal appears as pending. Click **Approve test**.
+> Both results say risk confirmed for this synthetic model, not for a live payment service.
 
-> The agent proposes the test. I decide whether its bounded verification may run.
+## 1:50–2:16 — Show retry and decision guards
 
-## 60–78 seconds — Two-stage verification
+Replay an identical request ID and show `replayed: true` with no duplicate result. Submit a stale expected state version and show `state_conflict`. Attempt a risk-linked `READY` decision and show `invalid_verification_result`.
 
-After human approval, the agent calls `get_release_snapshot` again and receives state version `14`. It then calls `run_approved_verification` twice: first with `targeted_retry`, then with `seeded_monkey`, seed `37`, and a `20`-step cap. Show `V-001`, `V-002`, both `RISK CONFIRMED`, and the monkey trace reaching the modeled retry in four steps.
+> A stale state version is rejected instead of overwriting newer evidence. The agent cannot turn that risk into READY.
 
-> The exact replay reproduces the two side effects. A seeded state-machine run reaches the same failure through refresh and response-loss transitions. Both are real executions of the synthetic model—not claims about a live payment service.
+## 2:16–2:35 — Keep the final decision human-controlled
 
-## 78–88 seconds — Decision proposal
+Create pending HOLD proposal `P-018`; keep the header `UNDECIDED`. Click **Confirm HOLD** as the human and show the transition to state version `18`.
 
-Prompt:
+> It proposes HOLD, but the release header remains undecided until I confirm it.
 
-```text
-Read the current state and propose the release decision.
-```
+## 2:35–2:45 — Close on attribution and scope
 
-The agent reads version 16 and calls `propose_release_decision` with `V-002`. The HOLD card appears while the release header remains UNDECIDED.
+Reload and show that `HOLD`, `P-017`, `P-018`, `V-001`, and `V-002` persist in the versioned evidence and decision trail. Finish on the project end card.
 
-> Even now, the agent has not changed the release decision.
-
-## 88–93 seconds — Human decision
-
-Click **Confirm HOLD**.
-
-> The release owner makes the call.
-
-## 93–100 seconds — Trust close
-
-Show the activity trail and its v12→v18 sequence.
-
-> Every read, proposal, and human action is attributed and versioned. There are no credentials, uploads, live company systems, or deploy tool.
+> Those five page tools expose no arbitrary traffic, code, approvals, or deployments. It assembles and verifies the bounded evidence case. The human makes the release decision.
 
 ## Spoken narration
 
-Use [demo-narration.txt](demo-narration.txt) for the English voiceover. Keep the prompt and native tool calls visible while the narration explains the evidence and the human boundary. The current Inworld WAV is a local working artifact; the final submission must use a public video under three minutes.
+The exact English voiceover is checked in at [demo-narration.txt](demo-narration.txt). The reviewed local upload package uses that narration, English captions, and no music.
 
 ## Optional Inworld narration generation
 
-The checked-in narration text can be synthesized locally with Inworld's On-Demand plan. The API key is read only from the shell environment and is never written to the repository:
+The checked-in narration can be synthesized locally with Inworld's On-Demand plan. The API key is read only from the shell environment and is never written to the repository:
 
 ```bash
 export INWORLD_API_KEY='your-key-from-the-inworld-portal'
 npm run demo:tts:inworld
 ```
 
-The default output is `demo-output/demo-narration-inworld.wav`. The helper intentionally limits each request to Inworld's documented 2,000-character maximum. Use `INWORLD_VOICE_ID`, `INWORLD_MODEL_ID`, `INWORLD_TEXT_FILE`, or `INWORLD_OUTPUT` to override the defaults. Convert the WAV to the final video soundtrack with the local recording workflow; do not upload the API key or synthetic/private evidence.
+The default output is `demo-output/demo-narration-inworld.wav`. The helper limits each request to Inworld's documented 2,000-character maximum. Use `INWORLD_VOICE_ID`, `INWORLD_MODEL_ID`, `INWORLD_TEXT_FILE`, or `INWORLD_OUTPUT` to override the defaults. Never upload the API key or synthetic/private evidence.
 
-`npm run demo:record` is a deterministic Playwright integration recording with an explicit `SIMULATED INTEGRATION TEST · NOT NATIVE EVIDENCE` watermark. It is useful for regression review, but the final challenge video must show the real WebMCP-capable browser/agent interaction.
+`npm run demo:record` remains a deterministic Playwright integration recording with an explicit `SIMULATED INTEGRATION TEST · NOT NATIVE EVIDENCE` watermark. It is useful for regression review, but it is not the native challenge recording.

@@ -19,30 +19,32 @@ The deterministic video is a local integration artifact. Its explicit watermark 
 
 ## Native WebMCP acceptance gate
 
-**Current two-route status: deployed; clean-state native recertification pending.** The production checks below were performed against `https://release-evidence-room.vercel.app/` on 2026-08-28:
+**Current two-route status: deployed; clean-state native acceptance passed.** The production checks below were performed against `https://release-evidence-room.vercel.app/` on 2026-08-29:
 
 | Current production check | Observed result |
 | --- | --- |
 | Public routes | `/` and `/checkout` both returned HTTP 200. |
-| Production bundle | `assets/index-B-bB2yU5.js` contained the checkout UI, `CHECKOUT RUNTIME` provenance label, and `run_approved_verification`. |
+| Production bundle | `assets/index-DrvDCjEW.js` accesses `document.modelContext`, invokes `registerTool`, and contains all five documented tool names. |
 | Native discovery | ChatGPT's in-app browser discovered exactly the five documented WebMCP tools on `/`. |
-| v2 migration | The prior P-017/P-018 proposals, V-001/V-002 results, human-confirmed HOLD, and audit trail remained visible after deployment. |
-| Handoff overwrite guard | A newly generated checkout trace was refused because the migrated review already contained activity; the old audit remained intact. |
+| Clean checkout handoff | A freshly reset `/checkout` produced `checkout_session_017`, both evidence records, both retry keys, and both operation references before handing the session to `/`. |
+| Native five-tool flow | The page completed snapshot, evidence query, test proposal, approved targeted and seeded verification, and a verification-linked HOLD proposal. |
+| Safety guards | Pre-approval verification, risk-linked READY, and stale-state mutation were rejected; an identical verification request replayed without duplication. |
+| Final human state | The human confirmed `HOLD`; reload preserved state version `18`, `P-017`, `P-018`, `V-001`, and `V-002`. |
 
-The prior Release Room-only production build passed the full native tool path recorded below. A fresh browser-local state is still required to recertify the newly deployed `/checkout` → `CHECKOUT RUNTIME` → five-tool → human-confirmed HOLD path as one uninterrupted native run.
+The acceptance checklist below passed as one uninterrupted clean-state native run. Automated tests remain the reproducible regression gate; the native run proves current host discovery and end-to-end interaction on the deployed origin.
 
 Native acceptance requires all of the following on `https://release-evidence-room.vercel.app/` in ChatGPT's in-app browser or Chrome 149+ with WebMCP enabled:
 
 - `document.modelContext` is available.
 - Discovery returns exactly `get_release_snapshot`, `query_network_evidence`, `propose_test_case`, `run_approved_verification`, and `propose_release_decision`.
 - All five tools execute against a freshly reset room; verification is rejected until the human approves its linked test.
-- Repeating a proposal with the same `clientRequestId` returns the original result and creates no duplicate.
+- Repeating the targeted verification with the same `clientRequestId` returns the original result and creates no duplicate.
 - A stale `expectedStateVersion` returns `state_conflict` and creates no mutation.
 - The agent cannot approve a test, execute arbitrary code or a live-system test, confirm `READY`/`HOLD`, or deploy.
 - Human controls and the versioned activity trail visibly reflect the native calls.
 - After a final decision, the native UI exposes no second confirmation control. The direct second-confirmation domain transition is covered separately by automated tests.
 
-### Historical Release Room-only production-native result
+### Clean-state two-route production-native result
 
 | Check | Observed result |
 | --- | --- |
@@ -51,15 +53,14 @@ Native acceptance requires all of the following on `https://release-evidence-roo
 | Approval gate | Pre-approval verification returned `invalid_test_proposal` at state version `13` |
 | Targeted replay | `V-001`, `risk_confirmed`, two steps, two different idempotency keys, two modeled side effects, state version `15` |
 | Seeded monkey | `V-002`, seed `37`, cap `20`, four executed steps, `risk_confirmed`, state version `16` |
-| Decision guard | A risk-linked `READY` returned `invalid_verification_result`; `HOLD` became `P-018`, linked to `V-001`, and stayed pending until human confirmation |
+| Decision guard | A risk-linked `READY` returned `invalid_verification_result`; `HOLD` became `P-018`, linked to `V-002`, and stayed pending until human confirmation |
 | Final state | Human-confirmed `HOLD`, state version `18`, one approved test, one confirmed decision, two risk-confirmed verifications |
 | Persistence | Reload restored state version `18`, `HOLD`, proposal counts, and both verification verdicts |
-| Idempotency | Exact test-proposal, verification, and decision retries returned `replayed: true`, the original IDs, and no new state version |
-| Concurrency | A new proposal using stale state version `12` returned `state_conflict`; counts and state version stayed unchanged |
-| Bounds | `maxSteps: 101` was rejected; a verification run linked to a proposal containing only one side of the evidence pair returned `inconclusive` rather than inventing a verdict |
+| Idempotency | Replaying the exact `V-001` verification request returned `replayed: true`, the original ID, and no new state version |
+| Concurrency | A new proposal using stale state version `15` returned `state_conflict` against current version `16`; counts and state version stayed unchanged |
 | Browser health | Zero console errors after the complete flow and reload; no second `Confirm HOLD` control remained |
 
-Automated tests cover the compatibility fallback for hosts that omit the optional execute-callback options object. The earlier deployed five-tool native flow succeeded in the in-app browser, but that session did not instrument callback arguments and therefore does not prove that the host exercised the fallback branch. The historical canonical page served bundle `assets/index-dUdqh-KZ.js`.
+Automated tests and the earlier native acceptance separately cover exact test-proposal and decision replays, rejection of `maxSteps: 101`, and an `inconclusive` result when only one side of the evidence pair is linked. Those results are not attributed to the 2026-08-29 recording. Automated tests also cover the compatibility fallback for hosts that omit the optional execute-callback options object; the native session did not instrument callback arguments and therefore does not independently prove that the host exercised the fallback branch.
 
 ## Manual native test script
 
@@ -89,6 +90,6 @@ For a repeat acceptance run, record the browser/host, URL, discovered tool names
 - Multi-user synchronization, simultaneous same-version write conflict resolution, offline recovery, and cross-device persistence. Same-browser storage-event synchronization is covered by an automated test.
 - WebMCP behavior in Safari, mobile browsers, or hosts other than ChatGPT's in-app browser and WebMCP-enabled Chrome.
 - Inworld account billing state or voice quality across every available voice; the helper makes one bounded request and keeps the key out of source control.
-- Public YouTube upload and Devpost submission; both remain human-controlled external actions.
+- Final Devpost submission remains entrant-controlled. The reviewed 2:45 native-WebMCP walkthrough is public at <https://youtu.be/PyDhC1ju_pw>.
 
 These are explicit boundaries, not missing claims. The challenge entry uses synthetic evidence to demonstrate the WebMCP interaction safely.

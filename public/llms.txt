@@ -39,16 +39,17 @@ The agent reads evidence, drafts proposals, and may run a synthetic verification
 - 88 automated tests pass locally.
 - TypeScript/Vite build passes; npm audit reports zero high-severity vulnerabilities.
 - The Playwright `/checkout` → evidence handoff → five-tool → human-confirmed `HOLD` integration path passes and is explicitly a WebMCP host test double.
-- The earlier Release Room-only production build passed native five-tool acceptance on 2026-08-28 in ChatGPT's in-app browser.
-- The two-route build is deployed, and canonical native discovery returns all five tools. A clean-state native `/checkout` handoff-to-HOLD recertification remains pending.
-- The public YouTube demo remains the final submission artifact.
+- The deployed two-route build passed a clean-state native `/checkout` handoff, five-tool review, safety-guard, human-confirmed `HOLD`, and reload-persistence run on 2026-08-29 in ChatGPT's in-app browser.
+- The final 2:45 native-WebMCP upload package passed decode, captions, checksum, privacy, and independent review.
+- Public 2:45 native-WebMCP walkthrough with English audio and captions: https://youtu.be/PyDhC1ju_pw
 
 `risk_confirmed` means the bounded synthetic fixture reproduced the modeled failure. `not_reproduced` means only that one bounded run did not reproduce it; it is not proof that a live-system bug is absent.
 
 ## Documentation
 
 - README: https://github.com/Eason0in/release-evidence-room#readme
-- Judge walkthrough (review branch): https://github.com/Eason0in/release-evidence-room/blob/docs/judge-walkthrough-review/docs/judge-walkthrough.md
+- Judge walkthrough: https://github.com/Eason0in/release-evidence-room/blob/master/docs/judge-walkthrough.md
+- Submission readiness checklist: https://github.com/Eason0in/release-evidence-room/blob/master/docs/submission-checklist.md
 - Validation: https://github.com/Eason0in/release-evidence-room/blob/master/docs/validation.md
 - Scoring plan: https://github.com/Eason0in/release-evidence-room/blob/master/docs/scoring.md
 - GEO guide: https://github.com/Eason0in/release-evidence-room/blob/master/docs/geo.md
