@@ -62,14 +62,15 @@ Source of truth: [Official rules](https://webmcp.devpost.com/rules). Submission 
 - [x] No browser sidebar, account data, credentials, private company data, copyrighted music, or partner logos are included.
 - [x] Upload the verified recording to YouTube and make it publicly visible: <https://youtu.be/PyDhC1ju_pw>.
 - [x] Add the public YouTube URL to `docs/submission-draft.md` and README.
-- [ ] Add the public YouTube URL to the Devpost form.
+- [x] Add the public YouTube URL to the Devpost form.
 
 ## Devpost handoff
 
 - [x] Entrant logs in to or creates a free Devpost account.
-- [x] Join the WebMCP Challenge and accept the official rules.
-- [ ] Confirm solo/team status and all challenge-specific registration fields.
-- [ ] Fill project name, tagline, story, technology tags, live URL, repository URL, testing instructions, and public YouTube URL.
-- [ ] Add the prepared thumbnail or gallery media if the form requests it.
-- [ ] Reopen every submitted URL in a signed-out session and verify public access.
-- [ ] Review the complete draft and let the entrant click the final submission button.
+- [x] Join the WebMCP Challenge and complete entrant registration.
+- [x] Confirm `Individual` submitter type, `Taiwan` residence, and `New` app status.
+- [x] Fill project name, tagline, story, technology tags, live URL, repository URL, testing instructions, public YouTube URL, and AI-use disclosures.
+- [x] Add the prepared thumbnail to the Devpost project overview.
+- [x] Reopen every URL entered in the Devpost project draft without an authenticated session and verify public access.
+- [ ] The entrant reviews and accepts the final Official Rules and Devpost Terms checkbox.
+- [ ] The entrant clicks `Submit project` and verifies the submission confirmation.
