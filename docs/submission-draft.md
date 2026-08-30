@@ -1,12 +1,12 @@
 # Devpost submission draft
 
-This is the English copy prepared for the Devpost form. Replace the pending video placeholder only after the native production recording is public on YouTube.
+This is the English copy prepared for the Devpost form. The final 2:45 native-WebMCP walkthrough passed local review and is publicly available on YouTube.
 
 Release Evidence Room is a new project created during the WebMCP Challenge submission period. Its public Git history documents the implementation timeline.
 
 - **Live URL:** https://release-evidence-room.vercel.app/
 - **Repository:** https://github.com/Eason0in/release-evidence-room
-- **Demo video:** `PENDING_PUBLIC_YOUTUBE_URL`
+- **Demo video:** https://youtu.be/PyDhC1ju_pw
 
 ## Project name
 
@@ -42,7 +42,7 @@ The `/checkout` UI runs a deterministic checkout state model. A validated same-o
 
 ## Testing instructions
 
-The complete judge-oriented walkthrough, including the reason and expected result for every step, is available in the [judge walkthrough](https://github.com/Eason0in/release-evidence-room/blob/docs/judge-walkthrough-review/docs/judge-walkthrough.md) on the review branch.
+The complete judge-oriented walkthrough, including the reason and expected result for every step, is available in the [judge walkthrough](https://github.com/Eason0in/release-evidence-room/blob/master/docs/judge-walkthrough.md) on the default branch.
 
 1. Open `https://release-evidence-room.vercel.app/checkout`, run **Place order · lose response**, choose **Retry with a new key**, and send the evidence to the Release Room.
 2. Confirm the Release Room shows `checkout_session_017`, both idempotency-key refs, and both operation refs. Use ChatGPT's in-app browser, or Chrome 149+ after enabling `chrome://flags/#enable-webmcp-testing` and relaunching.
@@ -52,7 +52,7 @@ The complete judge-oriented walkthrough, including the reason and expected resul
 6. Ask the agent to propose a release decision linked to `V-002`. Confirm that HOLD is only a proposal and the header remains UNDECIDED.
 7. Click **Confirm HOLD**, then inspect the activity trail for the attributed state sequence.
 
-The repository currently reports 88 automated tests. The production build, Playwright path, and dependency audit pass as local release gates. The two-route production build is live, and ChatGPT's in-app browser discovered all five tools on the canonical URL. The earlier Release Room-only production build completed the approval, targeted replay, seeded monkey, decision, persistence, idempotency, stale-state, and out-of-bounds-input checks with zero console errors. A clean-state native `/checkout` handoff must still be recertified before this draft is submitted.
+The repository currently reports 88 automated tests. The production build, Playwright path, and dependency audit pass as local release gates. On 2026-08-29, the deployed two-route build completed a clean-state native `/checkout` handoff, all five page tools, the approval gate, targeted replay, seeded monkey run, idempotent replay, stale-state guard, READY rejection, human-confirmed HOLD, and reload persistence in ChatGPT's in-app browser. The final 2:45 English walkthrough passed decode, caption, checksum, privacy, and independent review before it was published on YouTube.
 
 Use **Reset demo** before repeating the flow. No login or credentials are required.
 

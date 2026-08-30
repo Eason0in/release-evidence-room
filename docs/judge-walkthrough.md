@@ -76,9 +76,9 @@ Expected results:
 ## Prompt C — test the decision guard
 
 ```text
-First call propose_release_decision to attempt READY with P-017 and V-001. Report the exact rejection and do not soften it into a verbal check.
+First call propose_release_decision to attempt READY with P-017 and V-002. Report the exact rejection and do not soften it into a verbal check.
 
-Then call propose_release_decision again with a new clientRequestId to propose HOLD linked to P-017 and V-001. Do not confirm the final decision for me.
+Then call propose_release_decision again with a new clientRequestId to propose HOLD linked to P-017 and V-002. Do not confirm the final decision for me.
 ```
 
 Expected result: READY is rejected, then pending release proposal `P-018` recommends HOLD. Only the visible human control can confirm it.
@@ -95,8 +95,8 @@ The agent may draft the human-readable title, Given/When/Then, and rationale, bu
 | Post-approval snapshot | `{}`; expect `stateVersion: 14` and approved `P-017`. |
 | Targeted verification | `expectedStateVersion: 14`, a new request ID, `P-017`, and `targeted_retry`. |
 | Seeded verification | `expectedStateVersion: 15`, a new request ID, `P-017`, `seeded_monkey`, `seed: 37`, `maxSteps: 20`. |
-| READY guard | `expectedStateVersion: 16`, a new request ID, both evidence IDs, `P-017`, `V-001`, and `recommendation: "ready"`; expect rejection. |
-| HOLD proposal | Reuse version `16` because the rejection did not mutate state; use a new request ID, both evidence IDs, `P-017`, `V-001`, and `recommendation: "hold"`. |
+| READY guard | `expectedStateVersion: 16`, a new request ID, both evidence IDs, `P-017`, `V-002`, and `recommendation: "ready"`; expect rejection. |
+| HOLD proposal | Reuse version `16` because the rejection did not mutate state; use a new request ID, both evidence IDs, `P-017`, `V-002`, and `recommendation: "hold"`. |
 
 ## Optional robustness checks
 
